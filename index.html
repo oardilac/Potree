@@ -397,12 +397,13 @@
 
       // Variables globales
       let gpsMarker = null;
+      let gpsIndex = 0;
+      let gpsCoordinateList = [];
 
       // MATRIZ DE COORDENADAS GPS PREDEFINIDAS (simula datos desde AWS)
       const userLocations = [
         { id: "3025064629", lat: null, lon: null, alt: null, color: "#ff0000" },
         { id: "4testing", lat: null, lon: null, alt: null, color: "#00ff00" },
-        { id: "3023456789", lat: null, lon: null, alt: null, color: "#0000ff" },
       ];
 
       // Mapa de ID a marcador (para actualización futura)
@@ -461,7 +462,7 @@
       window.awsConfig = {
         region: "us-east-1",
         accessKeyId: "AKIAZCRUSKBBWDBPX4PN",
-        secretAccessKey: "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"
+        secretAccessKey: "+5QYrAZKzIg5wChqZfr11V587CmrlgNUKvZXaM9Q",
       };
 
       // Punto de referencia conocido para la conversión (aleta de tiburón)
@@ -685,9 +686,7 @@
           updateLabelPosition();
 
           // Mostrar las coordenadas convertidas en la interfaz
-          document.getElementById("cloud-coords").textContent = `X: ${x.toFixed(
-            2
-          )}, Y: ${y.toFixed(2)}, Z: ${z.toFixed(2)}`;
+          debug(`Nube: X=${x.toFixed(2)}, Y=${y.toFixed(2)}, Z=${z.toFixed(2)}`);
 
           // Mover la cámara de forma suave
           moveCamera(x, y, z);
@@ -699,7 +698,7 @@
         }
 
         // Actualizar el panel desplegable con las coordenadas del marcador
-        updatePointPanel(x, y, z, lat, lon, alt);
+        // updatePointPanel(x, y, z, lat, lon, alt);
       }
 
       //
@@ -748,7 +747,9 @@
                         Alt: ${user.alt.toFixed(2)} m<br>
                         ${
                           user.custom && Object.keys(user.custom).length > 0
-                            ? `<small>Custom: ${JSON.stringify(user.custom)}</small><br>`
+                            ? `<small>Custom: ${JSON.stringify(
+                                user.custom
+                              )}</small><br>`
                             : ""
                         }
                         <small>Nube: X=${x.toFixed(2)}, Y=${y.toFixed(
@@ -843,6 +844,13 @@
             user.lat = user.lon = user.alt = null;
           }
         });
+        gpsCoordinateList = userLocations.filter(
+          (u) =>
+            u.id === "3025064629" &&
+            u.lat !== null &&
+            u.lon !== null &&
+            u.alt !== null
+        );
       }
 
       //
@@ -1047,7 +1055,7 @@
 
           // Transformar en lista y forzar el formato que usas en validatePosition()
           return Object.entries(registrosPorDispositivo).map(([id, item]) => ({
-            id: id.toString(),  // Esto asegura que sea string como espera validatePosition
+            id: id.toString(), // Esto asegura que sea string como espera validatePosition
             timestamp: item.timestamp,
             latitude: item.latitude,
             longitude: item.longitude,
@@ -1668,7 +1676,14 @@
                   return;
                 }
 
-                // Avanzar al siguiente punto
+                if (!gpsCoordinateList || gpsCoordinateList.length === 0) {
+                  debug("No hay coordenadas GPS válidas para 3025064629");
+                  alert(
+                    "No hay coordenadas disponibles para el dispositivo 3025064629"
+                  );
+                  return;
+                }
+
                 gpsIndex = (gpsIndex + 1) % gpsCoordinateList.length;
                 const newCoords = gpsCoordinateList[gpsIndex];
                 debug(
@@ -1681,6 +1696,7 @@
                   newCoords.lon,
                   newCoords.alt
                 );
+
                 updateMarker(
                   cloudCoords.x,
                   cloudCoords.y,
