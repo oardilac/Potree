@@ -34,6 +34,16 @@
         border-radius: 3px;
       }
 
+      .point-item.selected {
+        background-color: rgba(
+          255,
+          255,
+          0,
+          0.2
+        ); /* Amarillo claro translúcido */
+        border-left: 4px solid gold;
+        border-radius: 6px;
+      }
       #debug-panel {
         position: absolute;
         bottom: 10px;
@@ -397,6 +407,7 @@
 
       // Variables globales
       let gpsMarker = null;
+      let camaraEnganchadaA = null; // ID del usuario actualmente enganchado
 
       const userLocations = new Map(); // key: id, value: { lat, lon, alt, color }
 
@@ -411,6 +422,7 @@
       let cameraMoving = false;
       let gpsBlinkInterval = null;
       let gpsDB = null;
+      let ultimaPosicionCamara = new Map(); // id → { x, y, z }
       window.trayectoriasPorUsuario = new Map(); // id → lista de posiciones por usuario
       window.trayectoriasLineas = new Map(); // id → objeto THREE.Line por usuario
 
@@ -559,16 +571,6 @@
 
       //-------------------------------------------------------------------------------
 
-      function esSaltoBrusco(p1, p2) {
-        const dx = p2.longitude - p1.longitude;
-        const dy = p2.latitude - p1.latitude;
-        const distancia = Math.sqrt(dx * dx + dy * dy) * 111320; // metros aprox
-        const dt = p2.timestamp - p1.timestamp; // segundos
-
-        // Retorna true si la velocidad supera 100 m/s (≈360 km/h)
-        return dt > 0 && distancia / dt > 100;
-      }
-
       // Función para crear/actualizar el marcador en la nube
       function updateMarker(x, y, z, lat = null, lon = null, alt = null) {
         debug(
@@ -709,7 +711,7 @@
         updatePointPanel(x, y, z, lat, lon, alt);
       }
 
-      //
+      //--------------------------------------------------------------------------------
 
       function createUserMarker(x, y, z, user) {
         debug(
@@ -738,11 +740,11 @@
           }
         }, 500);
 
-        // ✅ AGREGAR AL PANEL LATERAL solo si hay marcador
+        // Caja lateral
         const panel = document.getElementById("points-panel-content");
         const div = document.createElement("div");
         div.className = "point-item";
-        div.id = `user-panel-${user.id}`; // útil si luego quieres eliminarlo dinámicamente
+        div.id = `user-panel-${user.id}`;
         div.innerHTML = `
                 <div class="point-icon" style="background-color: ${
                   user.color
@@ -757,17 +759,61 @@
           2
         )}, Z=${z.toFixed(2)}</small>
                     </div>
+                    <div class="follow-status" style="font-size: 12px; color: dodgerblue; font-weight: bold; display: none;">📍 Siguiendo</div>
                 </div>
             `;
-        div.addEventListener("click", () => {
-          if (!cameraMoving) moveCamera(x, y, z);
-        });
-        panel.appendChild(div);
 
+        div.addEventListener("click", () => {
+          const yaEnganchado = camaraEnganchadaA === user.id;
+
+          // Desmarcar anterior
+          if (camaraEnganchadaA !== null) {
+            const anterior = document.getElementById(
+              `user-panel-${camaraEnganchadaA}`
+            );
+            if (anterior) {
+              anterior.classList.remove("selected");
+              const textoAnterior = anterior.querySelector(".follow-status");
+              if (textoAnterior) textoAnterior.style.display = "none";
+            }
+          }
+
+          if (yaEnganchado) {
+            camaraEnganchadaA = null;
+            debug(`🔓 Cámara desenganchada`);
+          } else {
+            camaraEnganchadaA = user.id;
+            div.classList.add("selected");
+            const texto = div.querySelector(".follow-status");
+            if (texto) texto.style.display = "block";
+            if (!cameraMoving) {
+              moveCamera(
+                marker.position.x,
+                marker.position.y,
+                marker.position.z
+              );
+              ultimaPosicionCamara.set(user.id, {
+                x: marker.position.x,
+                y: marker.position.y,
+                z: marker.position.z,
+              });
+            }
+            debug(`📌 Cámara enganchada a Usuario ${user.id}`);
+          }
+        });
+
+        // Marcar si ya está enganchado
+        if (camaraEnganchadaA === user.id) {
+          div.classList.add("selected");
+          const texto = div.querySelector(".follow-status");
+          if (texto) texto.style.display = "block";
+        }
+
+        panel.appendChild(div);
         return marker;
       }
 
-      //
+      //---------------------------------------------------------------------------------
 
       function actualizarUsuariosDesdeAWS(positions) {
         const idsRecibidos = new Set();
@@ -776,7 +822,6 @@
           let user = userLocations.get(datos.id);
 
           if (!user) {
-            // Asignar color automáticamente (circular si hay más usuarios)
             const colores = [
               "#ff0000",
               "#00ff00",
@@ -797,7 +842,6 @@
 
             userLocations.set(datos.id, user);
           } else {
-            // Actualizar coordenadas si ya existe
             user.lat = datos.lat;
             user.lon = datos.lon;
             user.alt = datos.alt;
@@ -806,28 +850,94 @@
           idsRecibidos.add(datos.id);
 
           const cloud = convertGPSToCloudCoords(user.lat, user.lon, user.alt);
-          if (!cloud) return;
+          if (!cloud || isNaN(cloud.x) || isNaN(cloud.y) || isNaN(cloud.z)) {
+            console.warn(
+              `Coordenadas inválidas para usuario ${user.id}, se omite.`
+            );
+            return;
+          }
 
-          const isNew =
-            !userMarkers[user.id] ||
-            userMarkers[user.id].position.x !== cloud.x ||
-            userMarkers[user.id].position.y !== cloud.y ||
-            userMarkers[user.id].position.z !== cloud.z;
+          // 👉 Paso clave: guardar el nuevo punto
+          if (!window.trayectoriasPorUsuario.has(user.id)) {
+            window.trayectoriasPorUsuario.set(user.id, []);
+          }
+          const trayectoria = window.trayectoriasPorUsuario.get(user.id);
 
-          // Crear o actualizar marcador
-          if (userMarkers[user.id]) {
-            userMarkers[user.id].position.set(cloud.x, cloud.y, cloud.z);
+          //----------------------------------------------------------------------
+          trayectoria.push({ x: cloud.x, y: cloud.y, z: cloud.z });
+
+          // ✅ Actualizar o crear marcador GPS SIEMPRE (antes de cortar)
+          if (!userMarkers[user.id]) {
+            userMarkers[user.id] = createUserMarker(
+              cloud.x,
+              cloud.y,
+              cloud.z,
+              user
+            );
           } else {
-            const marker = createUserMarker(cloud.x, cloud.y, cloud.z, user);
-            userMarkers[user.id] = marker;
+            userMarkers[user.id].position.set(cloud.x, cloud.y, cloud.z);
           }
 
-          // Mover cámara si hay cambio y no está en movimiento
-          if (isNew && !cameraMoving) {
-            moveCamera(cloud.x, cloud.y, cloud.z);
+          // Si este usuario está enganchado, mover la cámara automáticamente
+          if (camaraEnganchadaA === user.id && !cameraMoving) {
+            const ultima = ultimaPosicionCamara.get(user.id);
+            const nueva = { x: cloud.x, y: cloud.y, z: cloud.z };
+
+            const delta = ultima
+              ? Math.abs(ultima.x - nueva.x) +
+                Math.abs(ultima.y - nueva.y) +
+                Math.abs(ultima.z - nueva.z)
+              : Infinity;
+
+            if (delta > 0.1) {
+              // Solo mover si cambió más de 10 cm
+              moveCamera(nueva.x, nueva.y, nueva.z);
+              ultimaPosicionCamara.set(user.id, nueva);
+              debug(`📡 Cámara actualizada al moverse el usuario ${user.id}`);
+            } else {
+              debug(`🛑 Usuario ${user.id} no se ha movido, cámara permanece`);
+            }
           }
 
-          // Actualizar panel lateral
+          // ⛔ No trazar línea si solo hay un punto
+          if (trayectoria.length < 2) return;
+
+          // ❌ No trazar línea si los dos últimos puntos son idénticos
+          const ultima = trayectoria[trayectoria.length - 1];
+          const penultima = trayectoria[trayectoria.length - 2];
+          const mismaPosicion =
+            ultima.x === penultima.x &&
+            ultima.y === penultima.y &&
+            ultima.z === penultima.z;
+          if (mismaPosicion) return;
+
+          // ✅ Crear o actualizar línea de trayectoria
+          const puntos = trayectoria.map(
+            (p) => new THREE.Vector3(p.x, p.y, p.z)
+          );
+          const geometry = new THREE.BufferGeometry().setFromPoints(puntos);
+          const color = new THREE.Color(user.color);
+
+          let linea = window.trayectoriasLineas.get(user.id);
+          if (linea) {
+            linea.geometry.dispose();
+            linea.geometry = geometry;
+          } else {
+            const material = new THREE.LineBasicMaterial({
+              color: color,
+              transparent: true,
+              opacity: 1.0,
+              depthTest: false,
+            });
+            linea = new THREE.Line(geometry, material);
+            linea.visible = false; // 👈 Ocultar por defecto
+            viewer.scene.scene.add(linea);
+            window.trayectoriasLineas.set(user.id, linea);
+          }
+
+          //-------------------------------------------
+
+          // 👉 Actualizar panel lateral (opcional)
           const oldPanel = document.getElementById(`user-panel-${user.id}`);
           if (oldPanel) oldPanel.remove();
 
@@ -851,31 +961,67 @@
             2
           )}</small>
                         </div>
+                        <div class="follow-status" style="font-size: 12px; color: dodgerblue; font-weight: bold; display: none;">📍 Siguiendo</div>
                     </div>
                 `;
+
+          //--------------------------------------------------------
+
           div.addEventListener("click", () => {
-            if (!cameraMoving) moveCamera(cloud.x, cloud.y, cloud.z);
+            const yaEnganchado = camaraEnganchadaA === user.id;
+
+            if (camaraEnganchadaA !== null) {
+              const anterior = document.getElementById(
+                `user-panel-${camaraEnganchadaA}`
+              );
+              if (anterior) {
+                anterior.classList.remove("selected");
+                const textoAnterior = anterior.querySelector(".follow-status");
+                if (textoAnterior) textoAnterior.style.display = "none";
+              }
+            }
+
+            if (yaEnganchado) {
+              camaraEnganchadaA = null;
+              debug(`🔓 Cámara desenganchada`);
+            } else {
+              camaraEnganchadaA = user.id;
+              div.classList.add("selected");
+              const texto = div.querySelector(".follow-status");
+              if (texto) texto.style.display = "block";
+              const marcador = userMarkers[user.id];
+              if (!cameraMoving) {
+                moveCamera(
+                  marker.position.x,
+                  marker.position.y,
+                  marker.position.z
+                );
+                ultimaPosicionCamara.set(user.id, {
+                  x: marker.position.x,
+                  y: marker.position.y,
+                  z: marker.position.z,
+                });
+              }
+
+              debug(`📌 Cámara enganchada a Usuario ${user.id}`);
+            }
           });
-          panel.appendChild(div);
-        });
 
-        // Eliminar usuarios que ya no están presentes en la actualización
-        for (const [id, user] of userLocations) {
-          if (!idsRecibidos.has(id) && userMarkers[id]) {
-            viewer.scene.scene.remove(userMarkers[id]);
-            delete userMarkers[id];
-
-            const panel = document.getElementById(`user-panel-${id}`);
-            if (panel) panel.remove();
-
-            userLocations.delete(id); // eliminar completamente del Map
+          // Marcar si ya está enganchado
+          if (camaraEnganchadaA === user.id) {
+            div.classList.add("selected");
+            const texto = div.querySelector(".follow-status");
+            if (texto) texto.style.display = "block";
           }
-        }
+
+          panel.appendChild(div);
+          //--------------------------------------------
+        });
       }
 
       //
 
-      const VENTANA_TIEMPO_SEGUNDOS = 600; // 10 minutos de ventana móvil
+      const VENTANA_TIEMPO_SEGUNDOS = 120; // 2 minutos de ventana móvil
       const MAX_PUNTOS = 10; // Fallback si no hay puntos recientes
 
       async function cargarDesdeAWS() {
@@ -1757,24 +1903,16 @@
                   const geometry = new THREE.BufferGeometry().setFromPoints(
                     puntos
                   );
-
-                  // Buscar el color del usuario (coincide con el marcador)
-                  const user = userLocations.get(id);
-                  const userColor = user
-                    ? new THREE.Color(user.color)
-                    : new THREE.Color(0xffffff);
-
-                  // Crear una línea más gruesa y visible
+                  const color = new THREE.Color(
+                    userLocations.get(id)?.color || 0xffffff
+                  );
                   const material = new THREE.LineBasicMaterial({
-                    color: userColor,
-                    linewidth: 4, // ⚠️ Esto funciona solo en renderers nativos, Potree usa WebGL, ver más abajo.
-                    transparent: true,
-                    opacity: 1.0,
-                    depthTest: false, // se verá encima de todo
+                    color: color,
                   });
 
                   const linea = new THREE.Line(geometry, material);
                   linea.name = `Trayectoria_${id}`;
+                  linea.visible = true; // 👈 Activar aquí
                   viewer.scene.scene.add(linea);
 
                   window.trayectoriasLineas.set(id, linea);

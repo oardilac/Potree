@@ -397,14 +397,8 @@
 
       // Variables globales
       let gpsMarker = null;
-      let gpsIndex = 0;
-      let gpsCoordinateList = [];
 
-      // MATRIZ DE COORDENADAS GPS PREDEFINIDAS (simula datos desde AWS)
-      let userLocations = [
-        { id: "3025064629", lat: null, lon: null, alt: null, color: "#ff0000" },
-        { id: "4testing", lat: null, lon: null, alt: null, color: "#00ff00" },
-      ];
+      const userLocations = new Map(); // key: id, value: { lat, lon, alt, color }
 
       // Mapa de ID a marcador (para actualización futura)
       const userMarkers = {};
@@ -564,6 +558,7 @@
       }
 
       //-------------------------------------------------------------------------------
+
       function esSaltoBrusco(p1, p2) {
         const dx = p2.longitude - p1.longitude;
         const dy = p2.latitude - p1.latitude;
@@ -697,9 +692,9 @@
           updateLabelPosition();
 
           // Mostrar las coordenadas convertidas en la interfaz
-          debug(
-            `Nube: X=${x.toFixed(2)}, Y=${y.toFixed(2)}, Z=${z.toFixed(2)}`
-          );
+          document.getElementById("cloud-coords").textContent = `X: ${x.toFixed(
+            2
+          )}, Y: ${y.toFixed(2)}, Z: ${z.toFixed(2)}`;
 
           // Mover la cámara de forma suave
           moveCamera(x, y, z);
@@ -711,7 +706,7 @@
         }
 
         // Actualizar el panel desplegable con las coordenadas del marcador
-        // updatePointPanel(x, y, z, lat, lon, alt);
+        updatePointPanel(x, y, z, lat, lon, alt);
       }
 
       //
@@ -758,13 +753,6 @@
                         Lat: ${decimalToDMS(user.lat, true)}<br>
                         Lon: ${decimalToDMS(user.lon, false)}<br>
                         Alt: ${user.alt.toFixed(2)} m<br>
-                        ${
-                          user.custom && Object.keys(user.custom).length > 0
-                            ? `<small>Custom: ${JSON.stringify(
-                                user.custom
-                              )}</small><br>`
-                            : ""
-                        }
                         <small>Nube: X=${x.toFixed(2)}, Y=${y.toFixed(
           2
         )}, Z=${z.toFixed(2)}</small>
@@ -788,7 +776,7 @@
           let user = userLocations.get(datos.id);
 
           if (!user) {
-            // Asignar color automáticamente (circular)
+            // Asignar color automáticamente (circular si hay más usuarios)
             const colores = [
               "#ff0000",
               "#00ff00",
@@ -805,41 +793,41 @@
               lon: datos.lon,
               alt: datos.alt,
               color: color,
-              custom: datos.custom || {},
             };
+
             userLocations.set(datos.id, user);
           } else {
-            const isNew =
-              user.lat !== datos.lat ||
-              user.lon !== datos.lon ||
-              user.alt !== datos.alt;
-
+            // Actualizar coordenadas si ya existe
             user.lat = datos.lat;
             user.lon = datos.lon;
             user.alt = datos.alt;
-            user.custom = datos.custom || {};
-
-            const cloud = convertGPSToCloudCoords(user.lat, user.lon, user.alt);
-            if (!cloud) return;
-
-            // Actualizar o crear marcador
-            if (userMarkers[user.id]) {
-              userMarkers[user.id].position.set(cloud.x, cloud.y, cloud.z);
-            } else {
-              const marker = createUserMarker(cloud.x, cloud.y, cloud.z, user);
-              userMarkers[user.id] = marker;
-            }
-
-            // Mover cámara si hay cambio
-            if (isNew && !cameraMoving) {
-              moveCamera(cloud.x, cloud.y, cloud.z);
-            }
           }
 
-          // Panel lateral
+          idsRecibidos.add(datos.id);
+
           const cloud = convertGPSToCloudCoords(user.lat, user.lon, user.alt);
           if (!cloud) return;
 
+          const isNew =
+            !userMarkers[user.id] ||
+            userMarkers[user.id].position.x !== cloud.x ||
+            userMarkers[user.id].position.y !== cloud.y ||
+            userMarkers[user.id].position.z !== cloud.z;
+
+          // Crear o actualizar marcador
+          if (userMarkers[user.id]) {
+            userMarkers[user.id].position.set(cloud.x, cloud.y, cloud.z);
+          } else {
+            const marker = createUserMarker(cloud.x, cloud.y, cloud.z, user);
+            userMarkers[user.id] = marker;
+          }
+
+          // Mover cámara si hay cambio y no está en movimiento
+          if (isNew && !cameraMoving) {
+            moveCamera(cloud.x, cloud.y, cloud.z);
+          }
+
+          // Actualizar panel lateral
           const oldPanel = document.getElementById(`user-panel-${user.id}`);
           if (oldPanel) oldPanel.remove();
 
@@ -848,138 +836,93 @@
           div.className = "point-item";
           div.id = `user-panel-${user.id}`;
           div.innerHTML = `
-      <div class="point-icon" style="background-color: ${user.color};"></div>
-      <div class="point-details">
-          <div class="point-title">Usuario ${user.id}</div>
-          <div class="point-coords">
-              Lat: ${decimalToDMS(user.lat, true)}<br>
-              Lon: ${decimalToDMS(user.lon, false)}<br>
-              Alt: ${user.alt.toFixed(2)} m<br>
-              <small>Nube: X=${cloud.x.toFixed(2)}, Y=${cloud.y.toFixed(
+                    <div class="point-icon" style="background-color: ${
+                      user.color
+                    };"></div>
+                    <div class="point-details">
+                        <div class="point-title">Usuario ${user.id}</div>
+                        <div class="point-coords">
+                            Lat: ${decimalToDMS(user.lat, true)}<br>
+                            Lon: ${decimalToDMS(user.lon, false)}<br>
+                            Alt: ${user.alt.toFixed(2)} m<br>
+                            <small>Nube: X=${cloud.x.toFixed(
+                              2
+                            )}, Y=${cloud.y.toFixed(2)}, Z=${cloud.z.toFixed(
             2
-          )}, Z=${cloud.z.toFixed(2)}</small>
-          </div>
-      </div>
-    `;
+          )}</small>
+                        </div>
+                    </div>
+                `;
           div.addEventListener("click", () => {
             if (!cameraMoving) moveCamera(cloud.x, cloud.y, cloud.z);
           });
           panel.appendChild(div);
-
-          idsRecibidos.add(user.id);
         });
 
-        // Eliminar usuarios no presentes
-        const usuariosRestantes = [];
+        // Eliminar usuarios que ya no están presentes en la actualización
+        for (const [id, user] of userLocations) {
+          if (!idsRecibidos.has(id) && userMarkers[id]) {
+            viewer.scene.scene.remove(userMarkers[id]);
+            delete userMarkers[id];
 
-        userLocations.forEach((user) => {
-          const id = user.id;
-          if (!idsRecibidos.has(id)) {
-            if (userMarkers[id]) {
-              viewer.scene.scene.remove(userMarkers[id]);
-              delete userMarkers[id];
-            }
             const panel = document.getElementById(`user-panel-${id}`);
             if (panel) panel.remove();
-            // No lo agregamos a la nueva lista => se elimina
-          } else {
-            usuariosRestantes.push(user);
-          }
-        });
 
-        // Reasignar el array sin los eliminados
-        for (const id of [...userLocations.keys()]) {
-          if (!idsRecibidos.has(id)) {
-            userLocations.delete(id);
+            userLocations.delete(id); // eliminar completamente del Map
           }
         }
-
-        // Filtrar lista GPS para el ID requerido
-        gpsCoordinateList = Array.from(userLocations.values()).filter(
-          (u) =>
-            u.id === "3025064629" &&
-            u.lat !== null &&
-            u.lon !== null &&
-            u.alt !== null
-        );
       }
 
-      const VENTANA_TIEMPO_SEGUNDOS = 120; // 2 minutos de ventana móvil
+      //
+
+      const VENTANA_TIEMPO_SEGUNDOS = 600; // 10 minutos de ventana móvil
       const MAX_PUNTOS = 10; // Fallback si no hay puntos recientes
+
       async function cargarDesdeAWS() {
         if (!gpsDB) return;
 
         try {
-          const posiciones = await gpsDB.getRecentPositions(100);
-          console.table(posiciones, [
-            "timestamp",
-            "id",
-            "latitude",
-            "longitude",
-            "altitude",
-          ]);
-
+          // 1. Traemos muuuuchos registros
+          const posiciones = await gpsDB.getRecentPositions(5000);
           if (posiciones.length === 0) return;
 
-          const ahora = Date.now();
-
-          // Filtrar por ventana de tiempo
-          const recientes = posiciones.filter(
-            (p) => ahora - p.timestamp * 1000 <= VENTANA_TIEMPO_SEGUNDOS * 1000
-          );
-
-          const usados =
-            recientes.length >= 2 ? recientes : posiciones.slice(-MAX_PUNTOS); // fallback
-
-          // Limpiar trayectorias anteriores
-          window.trayectoriasPorUsuario = new Map();
-
-          // Agrupar por usuario
-          const puntosPorUsuario = new Map();
-          usados.forEach((p) => {
-            if (!puntosPorUsuario.has(p.id)) {
-              puntosPorUsuario.set(p.id, []);
-            }
-            puntosPorUsuario.get(p.id).push(p);
+          /* 2. Agrupar por deviceId */
+          const puntosPorId = new Map();
+          posiciones.forEach((p) => {
+            if (!puntosPorId.has(p.id)) puntosPorId.set(p.id, []);
+            puntosPorId.get(p.id).push(p);
           });
 
-          // Filtrar saltos bruscos por usuario
-          for (const [id, puntos] of puntosPorUsuario.entries()) {
-            const trayectoria = [];
+          // 3. Para cada id ordenamos y nos quedamos con los 100 últimos
+          window.trayectoriasPorUsuario.clear(); // <-- limpiamos trayectorias viejas
+          const ultimosParaMarcadores = [];
 
-            for (let i = 0; i < puntos.length; i++) {
-              if (i === 0 || !esSaltoBrusco(puntos[i - 1], puntos[i])) {
-                trayectoria.push(puntos[i]);
-              }
-            }
+          puntosPorId.forEach((lista, id) => {
+            lista.sort((a, b) => a.timestamp - b.timestamp); // ascendente
+            const ultimos100 = lista.slice(-100); // últimos 100
 
-            if (trayectoria.length >= 2) {
-              window.trayectoriasPorUsuario.set(id, trayectoria);
-            }
-          }
+            // Guardamos la trayectoria para dibujar líneas
+            window.trayectoriasPorUsuario.set(id, ultimos100);
 
-          // Usar el último punto de cada trayectoria para mostrar en el mapa
-          const datosFormateados = [];
-          for (const [id, tray] of window.trayectoriasPorUsuario.entries()) {
-            const p = tray[tray.length - 1];
-            datosFormateados.push({
+            // El último punto será el “vivo”
+            const p = ultimos100[ultimos100.length - 1];
+            ultimosParaMarcadores.push({
               id: p.id,
               lat: p.latitude,
               lon: p.longitude,
               alt: p.altitude,
-              custom: {
-                heading: p.heading,
-                speed: p.speed,
-              },
             });
-          }
+          });
 
-          actualizarUsuariosDesdeAWS(datosFormateados);
+          /* 4. Actualizamos marcadores y panel */
+          actualizarUsuariosDesdeAWS(ultimosParaMarcadores);
         } catch (err) {
           console.error("Error al cargar posiciones desde AWS:", err);
         }
       }
 
+      //
+      // Función para actualizar el panel desplegable con los datos del punto
       function updatePointPanel(x, y, z, lat, lon, alt) {
         debug("Actualizando panel de puntos GPS...");
 
@@ -1129,44 +1072,40 @@
           this.tableName = tableName;
           this.docClient = new AWS.DynamoDB.DocumentClient();
         }
-        async getRecentPositions(count = 50) {
+
+        //-----
+        async getRecentPositions(count = 10) {
           const params = {
             TableName: this.tableName,
           };
 
           const data = await this.docClient.scan(params).promise();
-          console.log("Contenido crudo de AWS:", data.Items);
-
           const resultadosValidos = data.Items.filter(
             (item) =>
-              typeof item.deviceId === "string" &&
-              typeof item.timestamp === "number" &&
               typeof item.latitude === "number" &&
               typeof item.longitude === "number" &&
-              typeof item.altitude === "number"
-          );
+              typeof item.altitude === "number" &&
+              typeof item.timestamp === "number"
+          ).sort((a, b) => a.timestamp - b.timestamp); // Más antiguo → más reciente
 
-          // Agrupar por deviceId y obtener solo el de mayor timestamp
-          const registrosPorDispositivo = {};
-          for (const item of resultadosValidos) {
-            const id = item.deviceId;
-            if (
-              !registrosPorDispositivo[id] ||
-              item.timestamp > registrosPorDispositivo[id].timestamp
-            ) {
-              registrosPorDispositivo[id] = item;
-            }
-          }
-
-          // Transformar en lista y forzar el formato que usas en validatePosition()
-          return Object.entries(registrosPorDispositivo).map(([id, item]) => ({
-            id: id.toString(), // Esto asegura que sea string como espera validatePosition
+          return resultadosValidos.slice(-count).map((item) => ({
+            id: item.deviceId || "IDebugging", // ✔️ usa el ID real, o uno forzado si no está presente
             timestamp: item.timestamp,
             latitude: item.latitude,
             longitude: item.longitude,
             altitude: item.altitude,
-            custom: item.custom || {}, // Aquí pasamos custom para mostrarlo en el panel
           }));
+        }
+
+        //---
+        validatePosition(item) {
+          return (
+            typeof item.timestamp === "number" &&
+            typeof item.latitude === "number" &&
+            typeof item.longitude === "number" &&
+            typeof item.altitude === "number" &&
+            typeof item.id === "string"
+          );
         }
       }
 
@@ -1327,17 +1266,19 @@
         }, 10000); // cada 10 segundos
 
         // Usar la primera coordenada de la matriz como punto inicial
-        userLocations.forEach((user) => {
+        for (const [id, user] of userLocations) {
           if (user.lat != null && user.lon != null && user.alt != null) {
             const cloud = convertGPSToCloudCoords(user.lat, user.lon, user.alt);
-            if (!cloud) return;
+            if (!cloud) continue;
             const marker = createUserMarker(cloud.x, cloud.y, cloud.z, user);
-            userMarkers[user.id] = marker;
+            userMarkers[id] = marker;
           }
-        });
+        }
+
+        //
 
         // Buscar primer usuario activo para centrar cámara
-        let firstAvailable = userLocations.find(
+        let firstAvailable = [...userLocations.values()].find(
           (user) => user.lat != null && user.lon != null && user.alt != null
         );
 
@@ -1649,27 +1590,32 @@
       document.addEventListener("DOMContentLoaded", function () {
         setTimeout(() => {
           try {
-            // Botón Full Extent
+            // Configurar botón Full Extent
             document
               .getElementById("btn-full-extent")
               .addEventListener("click", function () {
                 try {
                   debug("Iniciando ajuste a pantalla completa");
 
+                  // Detener cualquier movimiento de cámara en progreso
                   if (cameraMoving) {
                     cameraMoving = false;
                     debug("Deteniendo movimiento de cámara previo");
                   }
 
+                  // Asegurar que la nube es visible
                   if (pointcloud) {
                     pointcloud.visible = true;
                   }
 
+                  // Crear una secuencia controlada de actualización
                   setTimeout(() => {
                     try {
+                      // Método 1: Usar fitToScreen directamente
                       viewer.fitToScreen();
                       debug("Vista ajustada con fitToScreen");
 
+                      // Forzar actualización de la escena después del ajuste
                       setTimeout(() => {
                         viewer.scene.dispatchEvent({ type: "update" });
                         viewer.scene.dispatchEvent({
@@ -1679,6 +1625,8 @@
                       }, 100);
                     } catch (fitError) {
                       debug(`Error en fitToScreen: ${fitError.message}`);
+
+                      // Método 2 (alternativo): Ajuste manual usando las dimensiones de la nube
                       try {
                         if (pointcloud && pointcloud.boundingBox) {
                           const bbox = pointcloud.boundingBox;
@@ -1686,11 +1634,14 @@
                           const size = bbox.getSize();
                           const maxDim = Math.max(size.x, size.y, size.z);
 
+                          // Calcular una posición elevada mirando al centro
                           const cameraPos = [
                             center.x,
                             center.y - maxDim,
                             center.z + maxDim / 2,
                           ];
+
+                          // Aplicar vista manualmente
                           viewer.scene.view.setView(cameraPos, [
                             center.x,
                             center.y,
@@ -1700,6 +1651,7 @@
                             "Vista ajustada manualmente usando boundingBox"
                           );
                         } else {
+                          // Método 3: Usar la función de resetView como último recurso
                           resetView();
                         }
                       } catch (manualError) {
@@ -1711,121 +1663,162 @@
                 } catch (error) {
                   debug(`ERROR en Full Extent: ${error.message}`);
                   console.error("Error en Full Extent:", error);
+
+                  // Último recurso
                   alert(
                     "Error al ajustar la vista. Intente de nuevo en unos segundos."
                   );
                 }
               });
 
-            // Botón Mover 5m + DIBUJAR trayectorias si no se han dibujado
+            ///
+
+            // Añadir después de la configuración del botón Full Extent (línea ~738)
+            // Función mejorada para el botón Full Extent
+            document
+              .getElementById("btn-full-extent")
+              .addEventListener("click", function () {
+                try {
+                  debug("Intentando ajustar a pantalla completa");
+
+                  // Primero aseguramos que la nube es visible
+                  if (pointcloud) {
+                    pointcloud.visible = true;
+                  }
+
+                  // Pequeña pausa para asegurar que todo está listo
+                  setTimeout(() => {
+                    try {
+                      viewer.fitToScreen();
+                      debug("Vista ajustada a pantalla completa exitosamente");
+
+                      // Forzar actualización adicional después de fitToScreen
+                      setTimeout(() => {
+                        viewer.scene.dispatchEvent({ type: "update" });
+                      }, 200);
+                    } catch (e) {
+                      debug(`Error en fitToScreen: ${e.message}`);
+
+                      // Plan B: usar resetView como alternativa
+                      resetView();
+                    }
+                  }, 50);
+                } catch (error) {
+                  debug(
+                    `ERROR al ajustar a pantalla completa: ${error.message}`
+                  );
+                }
+              });
+
+            //
+
             document
               .getElementById("btn-move-5m")
               .addEventListener("click", function () {
                 if (!cloudLoaded) {
+                  debug("Nube no cargada. No se puede trazar trayectoria.");
+                  return;
+                }
+
+                // Si ya hay líneas creadas, alternar visibilidad
+                if (window.trayectoriasLineas.size > 0) {
+                  for (const [id, linea] of window.trayectoriasLineas) {
+                    linea.visible = !linea.visible;
+                  }
                   debug(
-                    "Nube no cargada, no se puede mover a la siguiente coordenada"
+                    "Trayectorias visibles: " +
+                      [...window.trayectoriasLineas.values()].filter(
+                        (l) => l.visible
+                      ).length
                   );
+                  viewer.scene.dispatchEvent({ type: "update" });
                   return;
                 }
 
-                if (!gpsCoordinateList || gpsCoordinateList.length === 0) {
-                  debug("No hay coordenadas GPS válidas para 3025064629");
-                  alert(
-                    "No hay coordenadas disponibles para el dispositivo 3025064629"
+                // Crear líneas por cada usuario con trayectoria suficiente
+                for (const [id, trayectoria] of window.trayectoriasPorUsuario) {
+                  if (trayectoria.length < 2) continue;
+
+                  const puntos = trayectoria
+                    .map((p) => {
+                      const coords = convertGPSToCloudCoords(
+                        p.latitude,
+                        p.longitude,
+                        p.altitude
+                      );
+                      return coords
+                        ? new THREE.Vector3(coords.x, coords.y, coords.z)
+                        : null;
+                    })
+                    .filter((p) => p !== null);
+
+                  if (puntos.length < 2) continue;
+
+                  const geometry = new THREE.BufferGeometry().setFromPoints(
+                    puntos
                   );
-                  return;
+
+                  // Buscar el color del usuario (coincide con el marcador)
+                  const user = userLocations.get(id);
+                  const userColor = user
+                    ? new THREE.Color(user.color)
+                    : new THREE.Color(0xffffff);
+
+                  // Crear una línea más gruesa y visible
+                  const material = new THREE.LineBasicMaterial({
+                    color: userColor,
+                    linewidth: 4, // ⚠️ Esto funciona solo en renderers nativos, Potree usa WebGL, ver más abajo.
+                    transparent: true,
+                    opacity: 1.0,
+                    depthTest: false, // se verá encima de todo
+                  });
+
+                  const linea = new THREE.Line(geometry, material);
+                  linea.name = `Trayectoria_${id}`;
+                  viewer.scene.scene.add(linea);
+
+                  window.trayectoriasLineas.set(id, linea);
                 }
 
-                // Dibujar trayectorias si existen y no se han dibujado aún
-                if (!window.trayectoriasLineas)
-                  window.trayectoriasLineas = new Map();
+                //
 
-                if (
-                  window.trayectoriasLineas.size === 0 &&
-                  window.trayectoriasPorUsuario?.size > 0
-                ) {
-                  for (const [
-                    id,
-                    trayectoria,
-                  ] of window.trayectoriasPorUsuario.entries()) {
-                    if (trayectoria.length < 2) continue;
-
-                    const puntos = trayectoria
-                      .map((p) => {
-                        const coords = convertGPSToCloudCoords(
-                          p.latitude,
-                          p.longitude,
-                          p.altitude
-                        );
-                        return coords
-                          ? new THREE.Vector3(coords.x, coords.y, coords.z)
-                          : null;
-                      })
-                      .filter((p) => p !== null);
-
-                    if (puntos.length < 2) continue;
-
-                    const geometry = new THREE.BufferGeometry().setFromPoints(
-                      puntos
-                    );
-                    const user = userLocations.get(id);
-                    const userColor = user
-                      ? new THREE.Color(user.color)
-                      : new THREE.Color(0xffffff);
-
-                    const material = new THREE.LineBasicMaterial({
-                      color: userColor,
-                      transparent: true,
-                      opacity: 1.0,
-                      depthTest: false,
-                    });
-
-                    const linea = new THREE.Line(geometry, material);
-                    linea.name = `Trayectoria_${id}`;
-                    viewer.scene.scene.add(linea);
-
-                    window.trayectoriasLineas.set(id, linea);
-                  }
-
-                  if (window.trayectoriasLineas.size > 0) {
-                    debug(
-                      "Trayectorias dibujadas para: " +
-                        [...window.trayectoriasLineas.keys()].join(", ")
-                    );
-                    viewer.scene.dispatchEvent({ type: "update" });
-                  } else {
-                    debug(
-                      "No se encontraron trayectorias válidas para dibujar."
-                    );
-                  }
+                if (window.trayectoriasLineas.size > 0) {
+                  debug(
+                    "Trayectorias dibujadas para: " +
+                      [...window.trayectoriasLineas.keys()].join(", ")
+                  );
+                  viewer.scene.dispatchEvent({ type: "update" });
+                } else {
+                  alert("No se encontraron trayectorias válidas.");
                 }
-
-                // Movimiento a siguiente punto GPS
-                gpsIndex = (gpsIndex + 1) % gpsCoordinateList.length;
-                const newCoords = gpsCoordinateList[gpsIndex];
-                debug(
-                  `Moviendo a siguiente coordenada [${gpsIndex}]:`,
-                  newCoords
-                );
-
-                const cloudCoords = convertGPSToCloudCoords(
-                  newCoords.lat,
-                  newCoords.lon,
-                  newCoords.alt
-                );
-                updateMarker(
-                  cloudCoords.x,
-                  cloudCoords.y,
-                  cloudCoords.z,
-                  newCoords.lat,
-                  newCoords.lon,
-                  newCoords.alt
-                );
               });
+
+            //
+            // Asegúrate de que los iconos estén visibles y sean clicables
+            const buttons = document.querySelectorAll("#left-toolbar button");
+            buttons.forEach((button) => {
+              // Forzar visibilidad y estilos correctos
+              const icon = button.querySelector("i");
+              if (icon) {
+                icon.style.display = "block";
+                icon.style.visibility = "visible";
+                icon.style.opacity = "1";
+              }
+
+              // Añadir clases adicionales para asegurar funcionamiento
+              button.style.cursor = "pointer";
+              button.style.display = "flex";
+              button.style.justifyContent = "center";
+              button.style.alignItems = "center";
+
+              debug(`Botón configurado: ${button.id}`);
+            });
+
+            debug("Panel de control lateral configurado correctamente");
           } catch (e) {
-            debug("Error en DOMContentLoaded principal: " + e.message);
+            debug(`Error al configurar panel de control lateral: ${e.message}`);
           }
-        }, 100);
+        }, 3000); // Aumentar a 3 segundos para asegurar que todo esté cargado
       });
 
       // Añadir al final de la configuración de los botones del panel de control lateral (línea ~755)
