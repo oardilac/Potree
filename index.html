@@ -738,6 +738,29 @@
         marker.position.set(x, y, z);
         viewer.scene.scene.add(marker);
 
+        function headingToCompass(deg) {
+          if (deg === undefined || deg === null || deg < 0) return "—";
+          const sectores = [
+            "Norte", // 337.5° – 22.5°
+            "Noreste", // 22.5° – 67.5°
+            "Este", // 67.5° – 112.5°
+            "Sureste", // 112.5° – 157.5°
+            "Sur", // 157.5° – 202.5°
+            "Suroeste", // 202.5° – 247.5°
+            "Oeste", // 247.5° – 292.5°
+            "Noroeste", // 292.5° – 337.5°
+          ];
+          // índice 0-7 según el ángulo
+          const idx = Math.floor(((deg + 22.5) % 360) / 45);
+          return sectores[idx];
+        }
+
+        const headingTxt = headingToCompass(user.custom?.heading);
+        const speedTxt =
+          user.custom?.speed !== undefined
+            ? Number(user.custom.speed).toFixed(3) // 3 decimales
+            : "—";
+
         const div = document.createElement("div");
         div.className = "point-item";
         div.id = `user-panel-${user.id}`;
@@ -751,6 +774,8 @@
                         Lat: ${decimalToDMS(user.lat, true)}<br>
                         Lon: ${decimalToDMS(user.lon, false)}<br>
                         Alt: ${user.alt.toFixed(2)} m
+                        Vel.: ${speedTxt} m/s<br>
+                        Heading: ${headingTxt}<br>
                     </div>
                     <div class="follow-status" style="font-size: 12px; color: green; font-weight: bold; display: none;">📍 Siguiendo</div>
                     <div class="connect-status" style="font-size: 12px; font-weight: bold; color: green;">📶 Conectado</div>
@@ -897,6 +922,7 @@
               lon: datos.lon,
               alt: datos.alt,
               color: color,
+              custom: datos.custom,
             };
             userLocations.set(id, user);
           } else {
@@ -1025,6 +1051,29 @@
           const oldPanel = document.getElementById(`user-panel-${id}`);
           if (oldPanel) oldPanel.remove();
 
+          function headingToCompass(deg) {
+            if (deg === undefined || deg === null || deg < 0) return "—";
+            const sectores = [
+              "Norte", // 337.5° – 22.5°
+              "Noreste", // 22.5° – 67.5°
+              "Este", // 67.5° – 112.5°
+              "Sureste", // 112.5° – 157.5°
+              "Sur", // 157.5° – 202.5°
+              "Suroeste", // 202.5° – 247.5°
+              "Oeste", // 247.5° – 292.5°
+              "Noroeste", // 292.5° – 337.5°
+            ];
+            // índice 0-7 según el ángulo
+            const idx = Math.floor(((deg + 22.5) % 360) / 45);
+            return sectores[idx];
+          }
+
+          const headingTxt = headingToCompass(user.custom?.heading);
+          const speedTxt =
+            user.custom?.speed !== undefined
+              ? Number(user.custom.speed).toFixed(3) // 3 decimales
+              : "—";
+
           const panelContenedor = document.getElementById(
             "points-panel-content"
           );
@@ -1041,6 +1090,8 @@
                             Lat: ${decimalToDMS(user.lat, true)}<br>
                             Lon: ${decimalToDMS(user.lon, false)}<br>
                             Alt: ${user.alt.toFixed(2)} m<br>
+                            Vel.: ${speedTxt} m/s<br>
+                            Heading: ${headingTxt}<br>
                             <small>Nube: X=${cloud.x.toFixed(
                               2
                             )}, Y=${cloud.y.toFixed(2)}, Z=${cloud.z.toFixed(
@@ -1153,6 +1204,7 @@
                 lon: p.longitude,
                 alt: p.altitude,
                 timestamp: p.timestamp,
+                custom: p.custom,
               })
             );
           });
@@ -1178,6 +1230,29 @@
           const latDMS = decimalToDMS(lat, true);
           const lonDMS = decimalToDMS(lon, false);
 
+          function headingToCompass(deg) {
+            if (deg === undefined || deg === null || deg < 0) return "—";
+            const sectores = [
+              "Norte", // 337.5° – 22.5°
+              "Noreste", // 22.5° – 67.5°
+              "Este", // 67.5° – 112.5°
+              "Sureste", // 112.5° – 157.5°
+              "Sur", // 157.5° – 202.5°
+              "Suroeste", // 202.5° – 247.5°
+              "Oeste", // 247.5° – 292.5°
+              "Noroeste", // 292.5° – 337.5°
+            ];
+            // índice 0-7 según el ángulo
+            const idx = Math.floor(((deg + 22.5) % 360) / 45);
+            return sectores[idx];
+          }
+
+          const headingTxt = headingToCompass(user.custom?.heading);
+          const speedTxt =
+            user.custom?.speed !== undefined
+              ? Number(user.custom.speed).toFixed(3) // 3 decimales
+              : "—";
+
           // Crear o actualizar el contenido del panel
           pointContent.innerHTML = `
                     <div class="point-item" style="cursor: pointer;" title="Centrar cámara en este punto">
@@ -1188,6 +1263,8 @@
                                 Lat: ${latDMS}<br>
                                 Lon: ${lonDMS}<br>
                                 Alt: ${alt.toFixed(2)} m<br>
+                                Vel.: ${speedTxt} m/s<br>
+                                Heading: ${headingTxt}<br>
                                 <small>Nube: X=${x.toFixed(2)}, Y=${y.toFixed(
             2
           )}, Z=${z.toFixed(2)}</small>
@@ -1339,6 +1416,10 @@
             latitude: item.latitude,
             longitude: item.longitude,
             altitude: item.altitude,
+            custom:
+              typeof item.custom === "object" && item.custom !== null
+                ? item.custom // p.ej. {heading:0, speed:0}
+                : {}, // siempre devolver un objeto
           }));
         }
 
