@@ -838,6 +838,7 @@
               lon: datos.lon,
               alt: datos.alt,
               color: color,
+              custom: datos.custom,
             };
 
             userLocations.set(datos.id, user);
@@ -941,6 +942,29 @@
           const oldPanel = document.getElementById(`user-panel-${user.id}`);
           if (oldPanel) oldPanel.remove();
 
+          function headingToCompass(deg) {
+            if (deg === undefined || deg === null || deg < 0) return "—";
+            const sectores = [
+              "Norte", // 337.5° – 22.5°
+              "Noreste", // 22.5° – 67.5°
+              "Este", // 67.5° – 112.5°
+              "Sureste", // 112.5° – 157.5°
+              "Sur", // 157.5° – 202.5°
+              "Suroeste", // 202.5° – 247.5°
+              "Oeste", // 247.5° – 292.5°
+              "Noroeste", // 292.5° – 337.5°
+            ];
+            // índice 0-7 según el ángulo
+            const idx = Math.floor(((deg + 22.5) % 360) / 45);
+            return sectores[idx];
+          }
+
+          const headingTxt = headingToCompass(user.custom?.heading);
+          const speedTxt =
+            user.custom?.speed !== undefined
+              ? Number(user.custom.speed).toFixed(3) // 3 decimales
+              : "—";
+
           const panel = document.getElementById("points-panel-content");
           const div = document.createElement("div");
           div.className = "point-item";
@@ -955,6 +979,8 @@
                             Lat: ${decimalToDMS(user.lat, true)}<br>
                             Lon: ${decimalToDMS(user.lon, false)}<br>
                             Alt: ${user.alt.toFixed(2)} m<br>
+                            Vel.: ${speedTxt} m/s<br>
+                            Heading: ${headingTxt}<br>
                             <small>Nube: X=${cloud.x.toFixed(
                               2
                             )}, Y=${cloud.y.toFixed(2)}, Z=${cloud.z.toFixed(
@@ -1057,6 +1083,7 @@
               lat: p.latitude,
               lon: p.longitude,
               alt: p.altitude,
+              custom: p.custom,
             });
           });
 
@@ -1240,6 +1267,10 @@
             latitude: item.latitude,
             longitude: item.longitude,
             altitude: item.altitude,
+            custom:
+              typeof item.custom === "object" && item.custom !== null
+                ? item.custom // p.ej. {heading:0, speed:0}
+                : {}, // siempre devolver un objeto
           }));
         }
 
