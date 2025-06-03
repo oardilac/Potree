@@ -159,6 +159,18 @@
         background-repeat: no-repeat;
         background-position: center;
       }
+
+      .potree_home_icon::before {
+        content: "";
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        background-image: url("./libs/potree/resources/icons/earth_controls_1.png");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+      }
+
       /*********************************************** Iconos de Potree */
 
       /* Paso 5: Añade estilos para mejorar la visualización de los botones */
@@ -212,20 +224,21 @@
         position: absolute;
       }
 
-      /* Estilos para el nuevo panel desplegable */
       #points-panel {
         position: absolute;
         top: 10px;
         left: 10px;
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 5px;
-        z-index: 1001;
         width: 320px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-        transition: transform 0.3s ease;
-        max-height: 80vh;
+        height: 500px; /* Alto fijo: aproximadamente 3 cajas de usuario */
+        background-color: rgba(255, 255, 255, 0.85);
+        border-radius: 12px;
+        border: 1px solid #ccc;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
         display: flex;
         flex-direction: column;
+        transition: transform 0.3s ease;
+        z-index: 10;
       }
 
       #points-panel-header {
@@ -246,10 +259,16 @@
       }
 
       .point-item {
-        padding: 10px;
-        border-bottom: 1px solid #ddd;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        background-color: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(0, 0, 0, 0.25); /* Borde gris oscuro */
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
         display: flex;
         align-items: center;
+        cursor: pointer;
+        transition: background-color 0.3s, box-shadow 0.3s;
       }
 
       .point-item:last-child {
@@ -293,15 +312,92 @@
         padding: 0;
       }
 
-      .point-item {
-        cursor: pointer;
-        transition: background-color 0.3s, box-shadow 0.3s;
-      }
-
       .point-item:hover {
         background-color: rgba(76, 175, 80, 0.1); /* Verde claro translúcido */
         box-shadow: 0 0 8px rgba(76, 175, 80, 0.3); /* Sombra verde tenue */
         border-radius: 5px;
+      }
+
+      #loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #111;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease;
+      }
+
+      .loading-box {
+        text-align: center;
+      }
+
+      .spinner {
+        border: 6px solid #444;
+        border-top: 6px solid #00ff99;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .logo-title {
+        font-family: "Segoe UI", sans-serif;
+        font-size: 36px;
+        font-weight: bold;
+        color: #00ff99;
+        margin-bottom: 20px;
+        letter-spacing: 2px;
+        text-shadow: 0 0 10px #00ff99;
+      }
+
+      #north-compass {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 60px;
+        height: 75px; /* aumentamos altura para dar espacio a la N */
+        z-index: 1001;
+        background-color: rgba(255, 255, 255, 0.85);
+        border-radius: 12px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        border: 1px solid #ccc;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      #north-label {
+        color: red;
+        font-weight: 900; /* más gruesa */
+        font-size: 16px;
+        line-height: 16px;
+        margin-bottom: -4px;
+        user-select: none;
+        pointer-events: none;
+        font-family: sans-serif;
+      }
+
+      #north-arrow {
+        transition: transform 0.3s ease;
       }
     </style>
   </head>
@@ -344,13 +440,37 @@
       ></div>
 
       <div id="left-toolbar">
-        <button id="btn-full-extent" title="Full Extent">
+        <button id="btn-full-extent" title="Pantalla Completa">
           <i class="potree_full_extent_icon"></i>
         </button>
-        <button id="btn-move-5m" title="Mover 5m al Este">
+        <button id="btn-move-5m" title="Trayectorias">
           <i class="potree_move_icon"></i>
         </button>
+        <button id="btn-home" title="Ir al Origen">
+          <i class="potree_home_icon"></i>
+        </button>
       </div>
+    </div>
+
+    <div id="north-compass">
+      <div id="north-label">N</div>
+      <svg id="north-arrow" viewBox="0 0 100 100" width="100%" height="100%">
+        <!-- Círculo de fondo verde -->
+        <circle
+          cx="50"
+          cy="50"
+          r="45"
+          stroke="#bbb"
+          stroke-width="3"
+          fill="#4CAF50"
+        />
+
+        <!-- Aguja norte (roja) -->
+        <polygon points="50,20 60,50 40,50" fill="red" />
+
+        <!-- Aguja sur (blanca) -->
+        <polygon points="40,50 60,50 50,80" fill="white" />
+      </svg>
     </div>
 
     <!-- Eliminar completamente el panel de depuración en lugar de ocultarlo -->
@@ -370,7 +490,7 @@
     </div>
 
     <!-- Nuevo panel desplegable para puntos -->
-    <div id="points-panel">
+    <div id="points-panel" class="panel-collapsed">
       <div id="points-panel-header">
         <span>Puntos GPS</span>
         <button class="toggle-btn" id="toggle-panel">≪</button>
@@ -393,11 +513,12 @@
       window.viewer = new Potree.Viewer(
         document.getElementById("potree_render_area")
       );
+      const MAX_PUNTOS_CARGA = 2_500_000; // Puedes ajustar fácilmente esta constante global
 
       // Configuración del visor
       viewer.setEDLEnabled(true);
       viewer.setFOV(60);
-      viewer.setPointBudget(2_500_000);
+      viewer.setPointBudget(MAX_PUNTOS_CARGA);
       viewer.setBackground("gradient");
       viewer.loadSettingsFromURL();
 
@@ -413,8 +534,14 @@
 
       // Mapa de ID a marcador (para actualización futura)
       const userMarkers = {};
+      const flechasHeading = {}; // id → Mesh de flecha
       const estadoUsuarios = new Map(); // id → { ultimoTimestamp, ciclosSinCambio }
       const MAX_CICLOS_SIN_CAMBIO = 3; // puedes ajustar este valor
+      const DIRECCION_INICIAL = new THREE.Vector3(
+        524823.59,
+        1215810.79,
+        31.979999999999983
+      ); // vector de enfoque
 
       let annotations = null;
       let pointcloud = null;
@@ -424,12 +551,130 @@
       let cameraMoving = false;
       let gpsBlinkInterval = null;
       let gpsDB = null;
-      const MAX_PUNTOS = 600;
+      let planoBoundingBox = null;
+      let limitesCuboDinamico = null;
+      const ROTACION_Z_GRADOS = 45;
       let ultimaPosicionCamara = new Map(); // id → { x, y, z }
       window.trayectoriasPorUsuario = new Map(); // id → lista de posiciones por usuario
       window.trayectoriasLineas = new Map(); // id → objeto THREE.Line por usuario
 
       //-------------------------------------------------------------
+
+      function crearPlanoBoundingBox() {
+        if (!referencePoint || !referencePoint.cloud) {
+          console.warn("❗ El punto de referencia no está listo.");
+          return;
+        }
+
+        // 🔧 Ajusta estas dimensiones manualmente
+        const DIM_X = 1000;
+        const DIM_Y = 5800;
+        const DIM_Z = 60;
+
+        const geometry = new THREE.BoxGeometry(DIM_X, DIM_Y, DIM_Z);
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xff4444,
+          transparent: true,
+          opacity: 0.2,
+        });
+
+        planoBoundingBox = new THREE.Mesh(geometry, material);
+        planoBoundingBox.position.set(523478.49, 1216781.51, 35.09);
+
+        const rotZ = (ROTACION_Z_GRADOS * Math.PI) / 180;
+        planoBoundingBox.rotation.set(0, 0, rotZ); // 👉 Esto fuerza que esté perfectamente alineado
+
+        viewer.scene.scene.add(planoBoundingBox);
+
+        // 🔲 Contorno blanco (wireframe)
+        const wireframe = new THREE.EdgesGeometry(geometry);
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+        const lines = new THREE.LineSegments(wireframe, lineMaterial);
+        lines.position.copy(planoBoundingBox.position);
+        lines.rotation.set(0, 0, rotZ); // 👉 Asegura misma orientación que el cubo
+        viewer.scene.scene.add(lines);
+
+        debug("🟥 Cubo de bounding box creado correctamente.");
+        actualizarLimitesDesdeCubo();
+      }
+
+      function actualizarLimitesDesdeCubo() {
+        if (!planoBoundingBox) return;
+
+        const center = planoBoundingBox.position;
+        const size = planoBoundingBox.geometry.parameters;
+        const rotZ = planoBoundingBox.rotation.z;
+
+        limitesCuboDinamico = {
+          center: { x: center.x, y: center.y, z: center.z },
+          size: { x: size.width, y: size.height, z: size.depth },
+          rotZ,
+        };
+      }
+
+      function moverCuboEnDireccion(distancia, anguloGrados) {
+        if (!planoBoundingBox) return;
+
+        const rad = (anguloGrados * Math.PI) / 180;
+        const dx = Math.cos(rad) * distancia;
+        const dy = Math.sin(rad) * distancia;
+
+        planoBoundingBox.position.x += dx;
+        planoBoundingBox.position.y += dy;
+
+        // Mover también el contorno
+        viewer.scene.scene.children.forEach((obj) => {
+          if (
+            obj.type === "LineSegments" &&
+            obj.geometry instanceof THREE.EdgesGeometry
+          ) {
+            obj.position.x += dx;
+            obj.position.y += dy;
+          }
+        });
+        actualizarLimitesDesdeCubo();
+        debug(
+          `📦 Cubo movido: Δx=${dx.toFixed(2)}, Δy=${dy.toFixed(
+            2
+          )} (ángulo ${anguloGrados}°)`
+        );
+      }
+
+      function mostrarDimensionesYCentroDelCubo() {
+        if (!planoBoundingBox) return;
+
+        const { x, y, z } = planoBoundingBox.position;
+        const {
+          width: dx,
+          height: dy,
+          depth: dz,
+        } = planoBoundingBox.geometry.parameters;
+
+        debug(
+          `📏 Centro del cubo: x=${x.toFixed(2)}, y=${y.toFixed(
+            2
+          )}, z=${z.toFixed(2)}`
+        );
+        debug(`📦 Dimensiones: ancho=${dx}, largo=${dy}, alto=${dz}`);
+      }
+
+      function togglePlanoBoundingBox() {
+        if (!planoBoundingBox) {
+          crearPlanoBoundingBox();
+        } else {
+          const visible = !planoBoundingBox.visible;
+          planoBoundingBox.visible = visible;
+          viewer.scene.scene.children.forEach((obj) => {
+            if (
+              obj.type === "LineSegments" &&
+              obj.geometry instanceof THREE.EdgesGeometry
+            ) {
+              obj.visible = visible;
+            }
+          });
+          debug(`🟥 Cubo de bounding box ${visible ? "visible" : "oculto"}`);
+        }
+      }
 
       // Función para convertir coordenadas en formato DMS (grados, minutos, segundos) a decimal
       function dmsToDecimal(degrees, minutes, seconds, direction) {
@@ -442,6 +687,22 @@
       }
 
       //--------------------------------------------------------------
+
+      function headingToCompass(deg) {
+        if (deg === undefined || deg === null || deg < 0) return "—";
+        const sectores = [
+          "Norte",
+          "Noreste",
+          "Este",
+          "Sureste",
+          "Sur",
+          "Suroeste",
+          "Oeste",
+          "Noroeste",
+        ];
+        const idx = Math.floor(((deg + 22.5) % 360) / 45);
+        return sectores[idx];
+      }
 
       // Función para convertir coordenadas decimales a formato DMS (grados, minutos, segundos)
       function decimalToDMS(decimal, isLatitude) {
@@ -716,7 +977,7 @@
 
       //--------------------------------------------------------------------------------
 
-      function createUserMarker(x, y, z, user) {
+      function createUserMarker(x, y, z, user, cloud) {
         const geometry = new THREE.SphereGeometry(1.0, 16, 16); // Tamaño corregido
         const material = new THREE.MeshBasicMaterial({ color: user.color });
         const marker = new THREE.Mesh(geometry, material);
@@ -730,7 +991,7 @@
           material,
           group
         ) {
-          const t = performance.now() * 0.005;
+          const t = performance.now() * 0.0035; // sincronizado con flecha
           const scale = 1 + 0.25 * Math.sin(t);
           marker.scale.set(scale, scale, scale);
         };
@@ -738,32 +999,20 @@
         marker.position.set(x, y, z);
         viewer.scene.scene.add(marker);
 
-        function headingToCompass(deg) {
-          if (deg === undefined || deg === null || deg < 0) return "—";
-          const sectores = [
-            "Norte", // 337.5° – 22.5°
-            "Noreste", // 22.5° – 67.5°
-            "Este", // 67.5° – 112.5°
-            "Sureste", // 112.5° – 157.5°
-            "Sur", // 157.5° – 202.5°
-            "Suroeste", // 202.5° – 247.5°
-            "Oeste", // 247.5° – 292.5°
-            "Noroeste", // 292.5° – 337.5°
-          ];
-          // índice 0-7 según el ángulo
-          const idx = Math.floor(((deg + 22.5) % 360) / 45);
-          return sectores[idx];
-        }
-
-        const headingTxt = headingToCompass(user.custom?.heading);
-        const speedTxt =
-          user.custom?.speed !== undefined
-            ? Number(user.custom.speed).toFixed(3) // 3 decimales
-            : "—";
-
         const div = document.createElement("div");
         div.className = "point-item";
         div.id = `user-panel-${user.id}`;
+        //-----------------------------------------
+        const velocidadTexto =
+          typeof user.speed === "number" && !isNaN(user.speed)
+            ? `Velocidad: ${user.speed.toFixed(3)} m/s<br>`
+            : "";
+
+        const rumboTexto =
+          typeof user.heading === "number" && !isNaN(user.heading)
+            ? `Rumbo: ${headingToCompass(user.heading)}<br>`
+            : "";
+
         div.innerHTML = `
                 <div class="point-icon" style="background-color: ${
                   user.color
@@ -773,14 +1022,22 @@
                     <div class="point-coords">
                         Lat: ${decimalToDMS(user.lat, true)}<br>
                         Lon: ${decimalToDMS(user.lon, false)}<br>
-                        Alt: ${user.alt.toFixed(2)} m
-                        Vel.: ${speedTxt} m/s<br>
-                        Heading: ${headingTxt}<br>
+                        Alt: ${user.alt.toFixed(2)} m<br>
+                        ${velocidadTexto}
+                        ${rumboTexto}
+                        <small>Nube: X=${cloud.x.toFixed(
+                          2
+                        )}, Y=${cloud.y.toFixed(2)}, Z=${cloud.z.toFixed(
+          2
+        )}</small>
                     </div>
                     <div class="follow-status" style="font-size: 12px; color: green; font-weight: bold; display: none;">📍 Siguiendo</div>
                     <div class="connect-status" style="font-size: 12px; font-weight: bold; color: green;">📶 Conectado</div>
                 </div>
+                
             `;
+
+        //-------------------------------------------
 
         // ✅ Enganche bloqueado si está desconectado
         div.addEventListener("click", () => {
@@ -842,6 +1099,55 @@
 
       //---------------------------------------------------------------------------------
 
+      function crearFlechaDireccion(user, posicion) {
+        const headingRad = user.heading * (Math.PI / 180);
+
+        // Crear grupo
+        const grupo = new THREE.Group();
+
+        // 🟢 Anillo centrado en el punto GPS
+        const ringGeometry = new THREE.RingGeometry(2.1, 2.4, 32); // radio reducido
+        const materialAnillo = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.35,
+          side: THREE.DoubleSide,
+          depthTest: false,
+        });
+
+        const anillo = new THREE.Mesh(ringGeometry, materialAnillo);
+        grupo.add(anillo); // sin rotación
+
+        // 🔺 Flecha sobre el borde del anillo
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0.2);
+        shape.lineTo(0.1, -0.2);
+        shape.lineTo(0, -0.1);
+        shape.lineTo(-0.1, -0.2);
+        shape.lineTo(0, 0.2);
+        const geometry = new THREE.ShapeGeometry(shape);
+
+        const matFlecha = new THREE.MeshBasicMaterial({
+          color: user.color,
+          side: THREE.DoubleSide,
+        });
+
+        const flecha = new THREE.Mesh(geometry, matFlecha);
+        flecha.scale.set(1.7, 1.7, 1); // Escalado uniforme (ligeramente más grande que antes)
+
+        flecha.position.y = 2.25; // borde exacto del anillo reducido
+        grupo.add(flecha);
+
+        // 📍 Centrar el grupo en el punto GPS
+        grupo.position.copy(posicion);
+        grupo.rotation.z = -headingRad;
+
+        viewer.scene.scene.add(grupo);
+        return grupo;
+      }
+
+      //---------------------------------------------------------------------------------
+
       function actualizarUsuariosDesdeAWS(positions) {
         const idsRecibidos = new Set();
 
@@ -849,7 +1155,6 @@
           const id = datos.id;
           const timestampActual = datos.timestamp || Date.now() / 1000;
 
-          // Registrar o actualizar estado
           if (!estadoUsuarios.has(id)) {
             estadoUsuarios.set(id, {
               ultimoTimestamp: timestampActual,
@@ -867,44 +1172,63 @@
 
           const estado = estadoUsuarios.get(id);
           const desconectado = estado.ciclosSinCambio >= MAX_CICLOS_SIN_CAMBIO;
+          const purgarVisualmente =
+            estado.ciclosSinCambio >= MAX_CICLOS_SIN_CAMBIO + 5; // solo limpieza visual
+
+          const cloud = convertGPSToCloudCoords(
+            datos.lat,
+            datos.lon,
+            datos.alt
+          );
+          if (!cloud || isNaN(cloud.x) || isNaN(cloud.y) || isNaN(cloud.z)) {
+            console.warn(`Coordenadas inválidas para usuario ${id}, se omite.`);
+            return;
+          }
+
+          let fueraDeRango = false;
+          if (limitesCuboDinamico) {
+            const { center, size, rotZ } = limitesCuboDinamico;
+            const cosZ = Math.cos(-rotZ);
+            const sinZ = Math.sin(-rotZ);
+            const dx = cloud.x - center.x;
+            const dy = cloud.y - center.y;
+            const localX = dx * cosZ - dy * sinZ;
+            const localY = dx * sinZ + dy * cosZ;
+            const localZ = cloud.z - center.z;
+            fueraDeRango =
+              Math.abs(localX) > size.x / 2 ||
+              Math.abs(localY) > size.y / 2 ||
+              Math.abs(localZ) > size.z / 2;
+          }
 
           if (desconectado) {
-            debug(
-              `🟥 Usuario ${id} se considera desconectado. Eliminando marcador...`
-            );
-
-            if (camaraEnganchadaA === id) {
-              camaraEnganchadaA = null;
-              debug(`🔓 Cámara desenganchada de ${id} (usuario desconectado)`);
-
-              const panelCaja = document.getElementById(`user-panel-${id}`);
-              if (panelCaja) {
-                const seguimiento = panelCaja.querySelector(".follow-status");
-                if (seguimiento) seguimiento.style.display = "none";
-              }
-            }
-
             if (userMarkers[id]) {
               viewer.scene.scene.remove(userMarkers[id]);
               delete userMarkers[id];
             }
-
-            const panel = document.getElementById(`user-panel-${id}`);
-            if (panel) {
-              const estadoTexto = panel.querySelector(".connect-status");
-              if (estadoTexto) {
-                estadoTexto.textContent = "📶 Desconectado";
-                estadoTexto.style.color = "gray";
-              }
+            if (flechasHeading[id]) {
+              viewer.scene.scene.remove(flechasHeading[id]);
+              delete flechasHeading[id];
             }
 
-            const linea = window.trayectoriasLineas.get(id);
-            if (linea) linea.visible = false;
-
-            return;
+            if (camaraEnganchadaA === id) {
+              camaraEnganchadaA = null;
+              debug(
+                `🔓 Cámara desenganchada porque el usuario ${id} se desconectó.`
+              );
+            }
           }
 
-          // Usuario activo
+          if (fueraDeRango && userMarkers[id]) {
+            userMarkers[id].visible = false;
+            if (camaraEnganchadaA === id) {
+              camaraEnganchadaA = null;
+              debug(
+                `🔓 Cámara desenganchada porque el usuario ${id} está fuera de rango.`
+              );
+            }
+          }
+
           let user = userLocations.get(id);
           if (!user) {
             const colores = [
@@ -917,65 +1241,71 @@
             ];
             const color = colores[userLocations.size % colores.length];
             user = {
-              id: id,
+              id,
               lat: datos.lat,
               lon: datos.lon,
               alt: datos.alt,
-              color: color,
-              custom: datos.custom,
+              speed: datos.speed,
+              heading: datos.heading,
+              color,
             };
             userLocations.set(id, user);
           } else {
             user.lat = datos.lat;
             user.lon = datos.lon;
             user.alt = datos.alt;
+            user.speed =
+              typeof datos.speed === "number" ? datos.speed : undefined;
+            user.heading =
+              typeof datos.heading === "number" ? datos.heading : undefined;
           }
+
+          user.fueraDeRango = fueraDeRango;
 
           idsRecibidos.add(id);
 
-          const cloud = convertGPSToCloudCoords(user.lat, user.lon, user.alt);
-          if (!cloud || isNaN(cloud.x) || isNaN(cloud.y) || isNaN(cloud.z)) {
-            console.warn(`Coordenadas inválidas para usuario ${id}, se omite.`);
-            return;
-          }
+          if (!trayectoriasPorUsuario.has(id))
+            trayectoriasPorUsuario.set(id, []);
+          const trayectoria = trayectoriasPorUsuario.get(id);
+          trayectoria.push({ x: cloud.x, y: cloud.y, z: cloud.z });
 
-          if (!window.trayectoriasPorUsuario.has(id)) {
-            window.trayectoriasPorUsuario.set(id, []);
-          }
-          const trayectoria = window.trayectoriasPorUsuario.get(id);
-          if (
-            trayectoria.length === 0 ||
-            trayectoria[trayectoria.length - 1].x !== cloud.x ||
-            trayectoria[trayectoria.length - 1].y !== cloud.y ||
-            trayectoria[trayectoria.length - 1].z !== cloud.z
-          ) {
-            trayectoria.push({
-              x: cloud.x,
-              y: cloud.y,
-              z: cloud.z,
-              ts: datos.timestamp,
-            });
-          }
-          if (trayectoria.length > MAX_PUNTOS) {
-            trayectoria.splice(0, trayectoria.length - MAX_PUNTOS);
-          }
-          trayectoria.push({
-            x: cloud.x,
-            y: cloud.y,
-            z: cloud.z,
-            ts: datos.timestamp,
-          });
+          if (!userMarkers[id] && !desconectado && !fueraDeRango) {
+            userMarkers[id] = createUserMarker(
+              cloud.x,
+              cloud.y,
+              cloud.z,
+              user,
+              cloud
+            );
+            // 🧭 Mostrar flecha de orientación si hay heading
+            if (!isNaN(user.heading)) {
+              const pos = new THREE.Vector3(cloud.x, cloud.y, cloud.z);
 
-          if (!userMarkers[id]) {
-            userMarkers[id] = createUserMarker(cloud.x, cloud.y, cloud.z, user);
-          } else {
+              if (flechasHeading[id]) {
+                flechasHeading[id].position.copy(pos);
+                flechasHeading[id].position.z += 3;
+                flechasHeading[id].rotation.z = -user.heading * (Math.PI / 180);
+              } else {
+                const flecha = crearFlechaDireccion(user, pos);
+                flechasHeading[id] = flecha;
+              }
+            } else {
+              if (flechasHeading[id]) {
+                viewer.scene.scene.remove(flechasHeading[id]);
+                delete flechasHeading[id];
+              }
+            }
+          } else if (userMarkers[id] && !fueraDeRango) {
             userMarkers[id].position.set(cloud.x, cloud.y, cloud.z);
+            userMarkers[id].visible = true;
           }
 
-          // 🔒 Solo mover cámara si está enganchada y usuario está conectado
-          const estaConectado = estado.ciclosSinCambio < MAX_CICLOS_SIN_CAMBIO;
-
-          if (camaraEnganchadaA === id && estaConectado && !cameraMoving) {
+          if (
+            camaraEnganchadaA === id &&
+            !cameraMoving &&
+            !desconectado &&
+            !fueraDeRango
+          ) {
             const ultima = ultimaPosicionCamara.get(id);
             const nueva = { x: cloud.x, y: cloud.y, z: cloud.z };
             const delta = ultima
@@ -988,142 +1318,129 @@
               moveCamera(nueva.x, nueva.y, nueva.z);
               ultimaPosicionCamara.set(id, nueva);
               debug(`📡 Cámara actualizada al moverse el usuario ${id}`);
-            } else {
-              debug(`🛑 Usuario ${id} no se ha movido, cámara permanece`);
             }
           }
 
-          if (trayectoria.length < 2) return;
+          if (trayectoria.length >= 2) {
+            const ultima = trayectoria[trayectoria.length - 1];
+            const penultima = trayectoria[trayectoria.length - 2];
+            const igual =
+              ultima.x === penultima.x &&
+              ultima.y === penultima.y &&
+              ultima.z === penultima.z;
+            if (!igual) {
+              const puntos = trayectoria.map(
+                (p) => new THREE.Vector3(p.x, p.y, p.z + 2)
+              );
+              const curva = new THREE.CatmullRomCurve3(puntos);
+              const geometry = new THREE.TubeGeometry(
+                curva,
+                100,
+                0.2,
+                8,
+                false
+              );
+              const material = new THREE.MeshBasicMaterial({
+                color: user.color,
+                transparent: true,
+                opacity: 1.0,
+              });
 
-          const ultima = trayectoria[trayectoria.length - 1];
-          const penultima = trayectoria[trayectoria.length - 2];
-          const mismaPosicion =
-            ultima.x === penultima.x &&
-            ultima.y === penultima.y &&
-            ultima.z === penultima.z;
-          if (mismaPosicion) return;
+              let linea = trayectoriasLineas.get(id);
+              const visibleAntes = linea?.visible ?? true;
 
-          const puntos = trayectoria.map(
-            (p) => new THREE.Vector3(p.x, p.y, p.z + 2)
-          );
-          // Crear una curva suave con los puntos
-          const curva = new THREE.CatmullRomCurve3(
-            puntos,
-            false,
-            "centripetal",
-            0.5
-          );
-          const segments = Math.max(4, puntos.length * 3);
+              if (linea) {
+                viewer.scene.scene.remove(linea);
+                linea.geometry.dispose();
+                linea.material.dispose();
+              }
 
-          // Crear un tubo alrededor de la curva (grosor = 0.2)
-          const geometry = new THREE.TubeGeometry(
-            curva,
-            segments,
-            0.2,
-            8,
-            false
-          );
-          const material = new THREE.MeshBasicMaterial({
-            color: user.color,
-            transparent: true,
-            opacity: 1.0,
-          });
-
-          //---------------------------------------------------
-          let linea = window.trayectoriasLineas.get(id);
-          let visibleAntes = false;
-
-          if (linea) {
-            visibleAntes = linea.visible; // ✔ recordar visibilidad anterior
-            viewer.scene.scene.remove(linea);
-            linea.geometry.dispose();
-            linea.material.dispose();
+              linea = new THREE.Mesh(geometry, material);
+              linea.visible = visibleAntes;
+              viewer.scene.scene.add(linea);
+              trayectoriasLineas.set(id, linea);
+            }
           }
-
-          linea = new THREE.Mesh(geometry, material);
-          linea.visible = visibleAntes; // ✔ restaurar visibilidad anterior
-          viewer.scene.scene.add(linea);
-          window.trayectoriasLineas.set(id, linea);
-
-          //-------------------------------------------------------
-
-          // Actualizar panel lateral
-          const oldPanel = document.getElementById(`user-panel-${id}`);
-          if (oldPanel) oldPanel.remove();
-
-          function headingToCompass(deg) {
-            if (deg === undefined || deg === null || deg < 0) return "—";
-            const sectores = [
-              "Norte", // 337.5° – 22.5°
-              "Noreste", // 22.5° – 67.5°
-              "Este", // 67.5° – 112.5°
-              "Sureste", // 112.5° – 157.5°
-              "Sur", // 157.5° – 202.5°
-              "Suroeste", // 202.5° – 247.5°
-              "Oeste", // 247.5° – 292.5°
-              "Noroeste", // 292.5° – 337.5°
-            ];
-            // índice 0-7 según el ángulo
-            const idx = Math.floor(((deg + 22.5) % 360) / 45);
-            return sectores[idx];
-          }
-
-          const headingTxt = headingToCompass(user.custom?.heading);
-          const speedTxt =
-            user.custom?.speed !== undefined
-              ? Number(user.custom.speed).toFixed(3) // 3 decimales
-              : "—";
 
           const panelContenedor = document.getElementById(
             "points-panel-content"
           );
+          const oldPanel = document.getElementById(`user-panel-${id}`);
+          if (oldPanel) oldPanel.remove();
+
           const div = document.createElement("div");
           div.className = "point-item";
           div.id = `user-panel-${id}`;
+          div.style.borderColor = user.color;
+
+          const velocidadTexto = user.speed
+            ? `Velocidad: ${user.speed.toFixed(3)} m/s<br>`
+            : "";
+          const rumboTexto = user.heading
+            ? `Rumbo: ${headingToCompass(user.heading)}<br>`
+            : "";
+
+          let estadoTexto = desconectado ? "📶 Desconectado" : "📶 Conectado";
+          let colorEstado = desconectado ? "gray" : "green";
+
+          if (!desconectado && fueraDeRango) {
+            estadoTexto += "<br>📡 Fuera de Rango";
+            colorEstado = "orange";
+          }
+
           div.innerHTML = `
                     <div class="point-icon" style="background-color: ${
                       user.color
                     };"></div>
                     <div class="point-details">
-                        <div class="point-title">Usuario ${user.id}</div>
+                        <div class="point-title">Usuario ${id}</div>
                         <div class="point-coords">
                             Lat: ${decimalToDMS(user.lat, true)}<br>
                             Lon: ${decimalToDMS(user.lon, false)}<br>
                             Alt: ${user.alt.toFixed(2)} m<br>
-                            Vel.: ${speedTxt} m/s<br>
-                            Heading: ${headingTxt}<br>
+                            ${velocidadTexto}
+                            ${rumboTexto}
                             <small>Nube: X=${cloud.x.toFixed(
                               2
                             )}, Y=${cloud.y.toFixed(2)}, Z=${cloud.z.toFixed(
             2
           )}</small>
                         </div>
-                        <div class="follow-status" style="font-size: 12px; color: green; font-weight: bold; display: none;">📍 Siguiendo</div>
-                        <div class="connect-status" style="font-size: 12px; font-weight: bold; color: green;">📶 Conectado</div>
-                    </div>
-                `;
+                        <div class="follow-status" style="font-size: 12px; color: green; font-weight: bold; display: ${
+                          camaraEnganchadaA === id ? "block" : "none"
+                        };">📍 Siguiendo</div>
+                        <div class="connect-status" style="font-size: 12px; font-weight: bold; color: ${colorEstado};">${estadoTexto}</div>
+                        ${
+                          desconectado
+                            ? `<div class='purge-bar' style='width: 100%; background: #ddd; height: 6px; margin-top: 4px;'>
+                            <div style='height: 100%; background: orange; width: ${(
+                              (100 *
+                                (estado.ciclosSinCambio -
+                                  MAX_CICLOS_SIN_CAMBIO)) /
+                              5
+                            ).toFixed(0)}%; transition: width 0.3s;'></div>
+                        </div>`
+                            : ""
+                        }
+                    </div>`;
 
-          // ✅ Protección en tiempo real al hacer click en la tarjeta
           div.addEventListener("click", () => {
-            const estadoAhora = estadoUsuarios.get(id);
-            const estaDesconectado =
-              estadoAhora?.ciclosSinCambio >= MAX_CICLOS_SIN_CAMBIO;
-
-            if (estaDesconectado) {
-              debug(`🚫 Usuario ${id} está desconectado. Enganche bloqueado.`);
+            const bloqueado = desconectado || fueraDeRango;
+            if (bloqueado) {
+              const motivo = desconectado ? "desconectado" : "fuera de rango";
+              debug(`🚫 Usuario ${id} está ${motivo}. Enganche bloqueado.`);
               return;
             }
 
             const yaEnganchado = camaraEnganchadaA === id;
-
             if (camaraEnganchadaA !== null) {
               const anterior = document.getElementById(
                 `user-panel-${camaraEnganchadaA}`
               );
               if (anterior) {
                 anterior.classList.remove("selected");
-                const textoAnterior = anterior.querySelector(".follow-status");
-                if (textoAnterior) textoAnterior.style.display = "none";
+                const txt = anterior.querySelector(".follow-status");
+                if (txt) txt.style.display = "none";
               }
             }
 
@@ -1133,11 +1450,11 @@
             } else {
               camaraEnganchadaA = id;
               div.classList.add("selected");
-              const texto = div.querySelector(".follow-status");
-              if (texto) texto.style.display = "block";
+              const txt = div.querySelector(".follow-status");
+              if (txt) txt.style.display = "block";
 
               const marcador = userMarkers[id];
-              if (!cameraMoving && marcador) {
+              if (marcador && !cameraMoving) {
                 moveCamera(
                   marcador.position.x,
                   marcador.position.y,
@@ -1149,72 +1466,150 @@
                   z: marcador.position.z,
                 });
               }
-
               debug(`📌 Cámara enganchada a Usuario ${id}`);
             }
           });
 
           if (camaraEnganchadaA === id) {
             div.classList.add("selected");
-            const texto = div.querySelector(".follow-status");
-            if (texto) texto.style.display = "block";
+          }
+
+          if (purgarVisualmente) {
+            if (userMarkers[id]) {
+              viewer.scene.scene.remove(userMarkers[id]);
+              delete userMarkers[id];
+            }
+            if (flechasHeading[id]) {
+              viewer.scene.scene.remove(flechasHeading[id]);
+              delete flechasHeading[id];
+            }
+
+            const panel = document.getElementById(`user-panel-${id}`);
+            if (panel) panel.remove();
+
+            if (trayectoriasLineas.has(id)) {
+              const linea = trayectoriasLineas.get(id);
+              viewer.scene.scene.remove(linea);
+              linea.geometry.dispose();
+              linea.material.dispose();
+              trayectoriasLineas.delete(id);
+            }
+
+            trayectoriasPorUsuario.delete(id);
+
+            if (camaraEnganchadaA === id) {
+              camaraEnganchadaA = null;
+              debug(
+                `🔓 Cámara desenganchada porque el usuario ${id} fue limpiado visualmente.`
+              );
+            }
+
+            return;
           }
 
           panelContenedor.appendChild(div);
         });
+
+        // 🔒 Forzar cierre y deshabilitado del panel si no hay cajas visibles
+        const contenedorPanel = document.getElementById("points-panel");
+        const contenidoPanel = document.getElementById("points-panel-content");
+        const toggleBtn = document.getElementById("toggle-panel");
+
+        if (contenedorPanel && contenidoPanel) {
+          const hayCajas = contenidoPanel.children.length > 0;
+
+          if (!hayCajas) {
+            contenedorPanel.classList.add("panel-collapsed");
+            if (toggleBtn) {
+              toggleBtn.textContent = "≫";
+              toggleBtn.disabled = true;
+            }
+            isPanelCollapsed = true;
+            debug(
+              "📁 Panel cerrado automáticamente porque no hay usuarios visibles."
+            );
+          } else {
+            if (toggleBtn) toggleBtn.disabled = false;
+          }
+        }
       }
 
       //----------------------------------------------------------------------------------
 
       const VENTANA_TIEMPO_SEGUNDOS = 120; // 2 minutos de ventana móvil
+      const MAX_PUNTOS = 10; // Fallback si no hay puntos recientes
 
       async function cargarDesdeAWS() {
         if (!gpsDB) return;
 
         try {
-          const bruto = await gpsDB.getRecentPositions(1500); // ya ASC
-          if (bruto.length === 0) return;
+          const deviceIds = await listarDeviceIds(); // Paso nuevo
 
-          /* Agrupar por id */
-          const porId = new Map();
-          bruto.forEach((p) => {
-            if (!porId.has(p.id)) porId.set(p.id, []);
-            porId.get(p.id).push(p);
-          });
+          const ahora = Date.now();
+          const VENTANA_TIEMPO_SEGUNDOS = 120;
+          const MAX_PUNTOS = 10;
 
-          const AHORA = Date.now();
           const datosFormateados = [];
 
-          porId.forEach((lista) => {
-            /* 1. recientes dentro de la ventana de tiempo */
-            const recientes = lista.filter(
+          //--------------------------
+          for (const id of deviceIds) {
+            const posiciones = await gpsDB.getPositionsByDevice(id, 10);
+            if (!posiciones || posiciones.length === 0) continue;
+
+            const ahora = Date.now();
+            const VENTANA_TIEMPO_SEGUNDOS = 120;
+            const MAX_PUNTOS = 10;
+
+            const recientes = posiciones.filter(
               (p) =>
-                AHORA - p.timestamp * 1000 <= VENTANA_TIEMPO_SEGUNDOS * 1000
+                ahora - p.timestamp * 1000 <= VENTANA_TIEMPO_SEGUNDOS * 1000
             );
+            const usados =
+              recientes.length >= 2 ? recientes : posiciones.slice(-MAX_PUNTOS);
 
-            /* 2. si no hay recientes ⇒ tomar los  MAX_PUNTOS  últimos */
-            const usados = recientes.length
-              ? recientes.slice(-MAX_PUNTOS) // ← solo los 100 últimos recientes
-              : lista.slice(-MAX_PUNTOS);
+            // Seleccionar punto más reciente con datos útiles
+            const ultima =
+              [...usados]
+                .reverse()
+                .find((p) => p.custom && typeof p.custom.speed === "number") ||
+              usados[usados.length - 1];
 
-            usados.forEach((p) =>
-              datosFormateados.push({
-                id: p.id,
-                lat: p.latitude,
-                lon: p.longitude,
-                alt: p.altitude,
-                timestamp: p.timestamp,
-                custom: p.custom,
-              })
-            );
-          });
+            if (!ultima) continue;
 
-          /* Mantén el orden cronológico */
-          datosFormateados.sort((a, b) => a.timestamp - b.timestamp);
+            const custom = ultima.custom || {};
 
-          actualizarUsuariosDesdeAWS(datosFormateados);
+            // Mostrar tabla de los 5 últimos puntos, resaltando cuál fue seleccionado
+            console.group(`📦 Datos descargados para ${id}`);
+            const tabla = usados.slice(-5).map((p) => ({
+              timestamp: p.timestamp,
+              lat: p.latitude,
+              lon: p.longitude,
+              alt: p.altitude,
+              speed: p.custom?.speed,
+              heading: p.custom?.heading,
+              "✅ Seleccionado": p === ultima ? "✅" : "",
+            }));
+            console.table(tabla);
+            console.groupEnd();
+
+            // Armar datos para actualizar panel lateral
+            datosFormateados.push({
+              id: ultima.id,
+              lat: ultima.latitude,
+              lon: ultima.longitude,
+              alt: ultima.altitude,
+              timestamp: ultima.timestamp,
+              speed:
+                typeof custom.speed === "number" ? custom.speed : undefined,
+              heading:
+                typeof custom.heading === "number" ? custom.heading : undefined,
+            });
+          }
+
+          //------------------------
+          actualizarUsuariosDesdeAWS(datosFormateados); // Ya tienes esta función
         } catch (err) {
-          console.error("Error al cargar posiciones desde AWS:", err);
+          console.error("❌ Error al cargar posiciones desde AWS:", err);
         }
       }
 
@@ -1230,29 +1625,6 @@
           const latDMS = decimalToDMS(lat, true);
           const lonDMS = decimalToDMS(lon, false);
 
-          function headingToCompass(deg) {
-            if (deg === undefined || deg === null || deg < 0) return "—";
-            const sectores = [
-              "Norte", // 337.5° – 22.5°
-              "Noreste", // 22.5° – 67.5°
-              "Este", // 67.5° – 112.5°
-              "Sureste", // 112.5° – 157.5°
-              "Sur", // 157.5° – 202.5°
-              "Suroeste", // 202.5° – 247.5°
-              "Oeste", // 247.5° – 292.5°
-              "Noroeste", // 292.5° – 337.5°
-            ];
-            // índice 0-7 según el ángulo
-            const idx = Math.floor(((deg + 22.5) % 360) / 45);
-            return sectores[idx];
-          }
-
-          const headingTxt = headingToCompass(user.custom?.heading);
-          const speedTxt =
-            user.custom?.speed !== undefined
-              ? Number(user.custom.speed).toFixed(3) // 3 decimales
-              : "—";
-
           // Crear o actualizar el contenido del panel
           pointContent.innerHTML = `
                     <div class="point-item" style="cursor: pointer;" title="Centrar cámara en este punto">
@@ -1263,8 +1635,6 @@
                                 Lat: ${latDMS}<br>
                                 Lon: ${lonDMS}<br>
                                 Alt: ${alt.toFixed(2)} m<br>
-                                Vel.: ${speedTxt} m/s<br>
-                                Heading: ${headingTxt}<br>
                                 <small>Nube: X=${x.toFixed(2)}, Y=${y.toFixed(
             2
           )}, Z=${z.toFixed(2)}</small>
@@ -1291,90 +1661,81 @@
       }
 
       // Función para mover la cámara de forma suave con pasos intermedios
-      function moveCamera(x, y, z) {
+      function moveCamera(
+        x,
+        y,
+        z,
+        targetX = x,
+        targetY = y,
+        targetZ = z,
+        usarOffset = true
+      ) {
         if (!pointcloud || cameraMoving) return;
 
+        const camera = viewer.scene.getActiveCamera();
+        const currentPos = camera.position.clone();
+        const currentTarget = viewer.scene.view.getPivot().clone();
+
+        const newTarget = new THREE.Vector3(targetX, targetY, targetZ);
+        const distancia = newTarget.distanceTo(currentTarget);
+
+        if (distancia < 0.5) {
+          debug("🛑 Movimiento insignificante. Cámara no se moverá.");
+          cameraMoving = false;
+          return;
+        }
+
         debug(
-          `Moviendo cámara hacia el punto (${x.toFixed(2)}, ${y.toFixed(
-            2
-          )}, ${z.toFixed(2)})...`
+          `🎯 Moviendo cámara hacia (${x}, ${y}, ${z}), con enfoque en (${targetX}, ${targetY}, ${targetZ})`
         );
+
         cameraMoving = true;
 
-        try {
-          const camera = viewer.scene.getActiveCamera();
-          const currentPos = camera.position.clone();
-          const currentTarget = viewer.scene.view.getPivot().clone();
+        let newPos;
 
-          const newTarget = new THREE.Vector3(x, y, z);
-          const direction = new THREE.Vector3()
-            .subVectors(currentPos, currentTarget)
-            .normalize();
-          const distancia = 50;
-          const newPos = new THREE.Vector3(
-            x + direction.x * distancia,
-            y + direction.y * distancia,
-            z + direction.z * distancia + 20
-          );
+        if (usarOffset) {
+          const offset = new THREE.Vector3(30, 30, 40);
+          newPos = newTarget.clone().add(offset);
+        } else {
+          newPos = new THREE.Vector3(x, y, z); // usar posición directa sin offset
+        }
 
-          const numSteps = 20;
-          const duration = 2000;
-          const stepInterval = duration / numSteps;
-          let currentStep = 0;
+        const numSteps = 20;
+        const duration = 2000;
+        const stepInterval = duration / numSteps;
+        let currentStep = 0;
 
-          function moveStep() {
-            if (currentStep >= numSteps) {
-              cameraMoving = false;
-              debug("Movimiento de cámara completado");
-              if (pointcloud) {
-                pointcloud.visible = true;
-
-                const updateLOD = () => {
-                  viewer.scene.dispatchEvent({ type: "pointclouds_loaded" });
-                  viewer.scene.dispatchEvent({ type: "update" });
-                };
-
-                updateLOD();
-                setTimeout(updateLOD, 500);
-                setTimeout(updateLOD, 1000);
-              }
-              return;
-            }
-
-            const progress = (currentStep + 1) / numSteps;
-            const lerpPos = new THREE.Vector3().lerpVectors(
-              currentPos,
-              newPos,
-              progress
-            );
-            const lerpTarget = new THREE.Vector3().lerpVectors(
-              currentTarget,
-              newTarget,
-              progress
-            );
-
-            viewer.scene.view.setView(
-              [lerpPos.x, lerpPos.y, lerpPos.z],
-              [lerpTarget.x, lerpTarget.y, lerpTarget.z]
-            );
-
-            if (pointcloud && !pointcloud.visible) {
-              pointcloud.visible = true;
-              debug(
-                "Forzando visibilidad durante movimiento, paso " + currentStep
-              );
-            }
-
-            currentStep++;
-            setTimeout(moveStep, stepInterval);
+        function moveStep() {
+          if (currentStep >= numSteps) {
+            cameraMoving = false;
+            debug("✅ Movimiento de cámara completado");
+            viewer.scene.dispatchEvent({ type: "update" });
+            viewer.scene.dispatchEvent({ type: "pointclouds_loaded" });
+            return;
           }
 
-          moveStep();
-        } catch (error) {
-          cameraMoving = false;
-          debug(`ERROR al mover la cámara: ${error.message}`);
-          console.error("Error al mover la cámara:", error);
+          const progress = (currentStep + 1) / numSteps;
+          const lerpPos = new THREE.Vector3().lerpVectors(
+            currentPos,
+            newPos,
+            progress
+          );
+          const lerpTarget = new THREE.Vector3().lerpVectors(
+            currentTarget,
+            newTarget,
+            progress
+          );
+
+          viewer.scene.view.setView(
+            [lerpPos.x, lerpPos.y, lerpPos.z],
+            [lerpTarget.x, lerpTarget.y, lerpTarget.z]
+          );
+
+          currentStep++;
+          setTimeout(moveStep, stepInterval);
         }
+
+        moveStep();
       }
 
       //-----------------------------------------------------------------------------
@@ -1395,43 +1756,62 @@
           this.docClient = new AWS.DynamoDB.DocumentClient();
         }
 
-        //-----
-        async getRecentPositions(count = 1500) {
+        async getPositionsByDevice(deviceId, count = 100) {
+          try {
+            const params = {
+              TableName: this.tableName,
+              KeyConditionExpression: "#d = :deviceId",
+              ExpressionAttributeNames: {
+                "#d": "deviceId",
+              },
+              ExpressionAttributeValues: {
+                ":deviceId": deviceId,
+              },
+              Limit: count,
+              ScanIndexForward: false,
+            };
+
+            const data = await this.docClient.query(params).promise();
+            return data.Items.map((item) => ({
+              id: item.deviceId,
+              timestamp: item.timestamp,
+              latitude: item.latitude,
+              longitude: item.longitude,
+              altitude: item.altitude,
+              custom:
+                typeof item.custom === "object" && item.custom !== null
+                  ? item.custom
+                  : {},
+            }));
+          } catch (error) {
+            console.error(
+              `❌ Error al obtener posiciones de ${deviceId}:`,
+              error
+            );
+            return [];
+          }
+        }
+      }
+
+      //-----------------------------------------------------------------------------
+
+      async function listarDeviceIds() {
+        try {
           const params = {
-            TableName: this.tableName,
+            TableName: "locations",
+            ProjectionExpression: "deviceId",
           };
 
-          const data = await this.docClient.scan(params).promise();
-          const resultadosValidos = data.Items.filter(
-            (item) =>
-              typeof item.latitude === "number" &&
-              typeof item.longitude === "number" &&
-              typeof item.altitude === "number" &&
-              typeof item.timestamp === "number"
-          ).sort((a, b) => a.timestamp - b.timestamp); // Más antiguo → más reciente
+          const data = await gpsDB.docClient.scan(params).promise();
 
-          return resultadosValidos.slice(-count).map((item) => ({
-            id: item.deviceId || "IDebugging", // ✔️ usa el ID real, o uno forzado si no está presente
-            timestamp: item.timestamp,
-            latitude: item.latitude,
-            longitude: item.longitude,
-            altitude: item.altitude,
-            custom:
-              typeof item.custom === "object" && item.custom !== null
-                ? item.custom // p.ej. {heading:0, speed:0}
-                : {}, // siempre devolver un objeto
-          }));
-        }
-
-        //---
-        validatePosition(item) {
-          return (
-            typeof item.timestamp === "number" &&
-            typeof item.latitude === "number" &&
-            typeof item.longitude === "number" &&
-            typeof item.altitude === "number" &&
-            typeof item.id === "string"
-          );
+          const idsUnicos = [
+            ...new Set(data.Items.map((item) => item.deviceId)),
+          ];
+          console.log("📋 Device IDs encontrados:", idsUnicos);
+          return idsUnicos;
+        } catch (error) {
+          console.error("❌ Error al listar deviceIds:", error);
+          return [];
         }
       }
 
@@ -1519,6 +1899,19 @@
       Potree.loadPointCloud("pointclouds/Nube1/cloud.js", "Nube1", (e) => {
         debug("Cargando nube de puntos...");
         pointcloud = e.pointcloud;
+
+        requestAnimationFrame(function esperarCarga() {
+          const puntos = viewer.scene.numPoints;
+
+          if (puntos >= MAX_PUNTOS_CARGA) {
+            const pantalla = document.getElementById("loading-screen");
+            pantalla.style.opacity = 0;
+            setTimeout(() => (pantalla.style.display = "none"), 500);
+          } else {
+            requestAnimationFrame(esperarCarga);
+          }
+        });
+
         let material = pointcloud.material;
         viewer.scene.addPointCloud(pointcloud);
 
@@ -1568,6 +1961,17 @@
         viewer.fitToScreen();
         debug("Ajustando vista a pantalla completa");
 
+        const cam = viewer.scene.getActiveCamera();
+        const target = viewer.scene.view.getPivot();
+        const enfoque = new THREE.Vector3()
+          .subVectors(target, cam.position)
+          .normalize();
+        debug(
+          `🎯 Dirección inicial de la cámara: (${enfoque.x.toFixed(
+            3
+          )}, ${enfoque.y.toFixed(3)}, ${enfoque.z.toFixed(3)})`
+        );
+
         // Inicializar el administrador de anotaciones
         annotations = viewer.scene.annotations;
         debug("Administrador de anotaciones inicializado");
@@ -1577,6 +1981,40 @@
 
         // Crear el marcador de referencia
         createReferenceMarker();
+
+        crearPlanoBoundingBox(); // ⚠️ Esto inicializa la caja invisible pero activa sus límites
+        planoBoundingBox.visible = false;
+        viewer.scene.scene.children.forEach((obj) => {
+          if (
+            obj.type === "LineSegments" &&
+            obj.geometry instanceof THREE.EdgesGeometry
+          ) {
+            obj.visible = false;
+          }
+        });
+        debug(
+          "🔲 Bounding box creada automáticamente al inicio (invisible pero funcional)"
+        );
+
+        const POSICION_HOGAR = new THREE.Vector3(
+          524771.285943634,
+          1215882.4076521,
+          69.51156807146481
+        );
+        const FOCO_HOGAR = new THREE.Vector3(524823.59, 1215810.79, 31.98);
+
+        moveCamera(
+          POSICION_HOGAR.x,
+          POSICION_HOGAR.y,
+          POSICION_HOGAR.z,
+          FOCO_HOGAR.x,
+          FOCO_HOGAR.y,
+          FOCO_HOGAR.z,
+          false
+        );
+        debug(
+          "🎯 Cámara inicial enviada al punto hogar calibrado con transición suave"
+        );
 
         try {
           gpsDB = new GPSDatabase("locations");
@@ -1600,45 +2038,6 @@
             userMarkers[id] = marker;
           }
         }
-
-        //
-
-        // Buscar primer usuario activo para centrar cámara
-        let firstAvailable = [...userLocations.values()].find(
-          (user) => user.lat != null && user.lon != null && user.alt != null
-        );
-
-        if (firstAvailable) {
-          const cloud = convertGPSToCloudCoords(
-            firstAvailable.lat,
-            firstAvailable.lon,
-            firstAvailable.alt
-          );
-          if (cloud) {
-            moveCamera(cloud.x, cloud.y, cloud.z);
-            debug(`Cámara centrada sobre usuario activo ${firstAvailable.id}`);
-          }
-        } else {
-          // Si nadie está activo, centrar sobre el punto de origen de la nube
-          const origin = referencePoint.cloud;
-          if (origin) {
-            moveCamera(origin.x, origin.y, origin.z);
-            debug("Cámara centrada sobre el punto de origen de la nube");
-          }
-        }
-
-        // Centrar cámara en el primer usuario
-        if (userLocations.length > 0) {
-          const first = userLocations[0];
-          const cloud = convertGPSToCloudCoords(
-            first.lat,
-            first.lon,
-            first.alt
-          );
-          if (cloud) moveCamera(cloud.x, cloud.y, cloud.z);
-        }
-
-        //
 
         // Agregar manejadores de eventos para la nube
         pointcloud.addEventListener("visibility_changed", (e) => {
@@ -1695,6 +2094,26 @@
               viewer.scene.getActiveCamera(),
               viewer.scene.pointclouds
             );
+          }
+        }
+        actualizarBrujulaSegunCamara();
+
+        // 🔁 Animar flechas de heading (latido)
+        for (const id in flechasHeading) {
+          const grupo = flechasHeading[id];
+          if (!grupo) continue;
+
+          // Buscar la flecha dentro del grupo
+          const flecha = grupo.children.find(
+            (obj) => obj.geometry && obj.geometry.type === "ShapeGeometry"
+          );
+
+          if (flecha) {
+            const t = performance.now() * 0.0035;
+            const base = 3.5;
+            const intensidad = 1.5;
+            const scale = base + intensidad * Math.sin(t);
+            flecha.scale.set(scale, scale, 1);
           }
         }
       });
@@ -1813,6 +2232,19 @@
         if (event.key === "r" || event.key === "R") {
           resetView();
         }
+        // Tecla 'B' para mostrar/ocultar plano de bounding box
+        if (event.key === "b" || event.key === "B") {
+          togglePlanoBoundingBox();
+        }
+        // Movimiento alineado con orientación visual del cubo rotado 45°
+        if (event.key === "w") moverCuboEnDireccion(5, 45); // hacia arriba en pantalla
+        if (event.key === "s") moverCuboEnDireccion(5, 225); // abajo
+        if (event.key === "a") moverCuboEnDireccion(5, 135); // izquierda visual
+        if (event.key === "d") moverCuboEnDireccion(5, -45); // derecha visual
+
+        if (event.key === "i" || event.key === "I") {
+          mostrarDimensionesYCentroDelCubo();
+        }
       });
 
       //-----------------------------M4------------------------------------
@@ -1850,6 +2282,24 @@
         }
       }
 
+      function actualizarBrujulaSegunCamara() {
+        const arrow = document.getElementById("north-arrow");
+        if (!arrow || !viewer) return;
+
+        const cam = viewer.scene.getActiveCamera();
+        const dir = new THREE.Vector3();
+        cam.getWorldDirection(dir);
+
+        // Proyección sobre plano XY
+        dir.z = 0;
+        dir.normalize();
+
+        const angle = Math.atan2(dir.x, dir.y); // respecto al eje Y (norte)
+        const grados = angle * (180 / Math.PI); // 👈 conversión directa
+
+        arrow.style.transform = `rotate(${-grados}deg)`; // flecha apunta al norte
+      }
+
       // Verificar visibilidad cada 3 segundos
       setInterval(checkAndRestoreCloudVisibility, 3000);
 
@@ -1871,11 +2321,22 @@
         };
 
         // Comenzar con pocos puntos y aumentar progresivamente
-        viewer.setPointBudget(500000); // Inicio con pocos puntos
-        progressiveLoad(1000000, 1000); // 1M después de 1 segundo
-        progressiveLoad(1500000, 2000); // 1.5M después de 2 segundos
-        progressiveLoad(2000000, 3000); // 2M después de 3 segundos
-        progressiveLoad(2500000, 4000); // 2.5M después de 4 segundos
+        viewer.setPointBudget(MAX_PUNTOS_CARGA * 0.2); // 20% inicial
+
+        progressiveLoad(MAX_PUNTOS_CARGA * 0.4, 1000); // 40% tras 1s
+        progressiveLoad(MAX_PUNTOS_CARGA * 0.6, 2000); // 60% tras 2s
+        progressiveLoad(MAX_PUNTOS_CARGA * 0.8, 3000); // 80% tras 3s
+        progressiveLoad(MAX_PUNTOS_CARGA * 1.0, 4000); // 100% tras 4s
+
+        // Ocultar pantalla de carga justo después de la carga total
+        setTimeout(() => {
+          const pantalla = document.getElementById("loading-screen");
+          pantalla.style.opacity = 0;
+          setTimeout(() => (pantalla.style.display = "none"), 500);
+          debug(
+            "Pantalla de carga ocultada tras completar la carga progresiva."
+          );
+        }, 4500);
       }
 
       // Inicializar el panel desplegable
@@ -1885,9 +2346,18 @@
         const pointsPanel = document.getElementById("points-panel");
 
         // Estado inicial: expandido
-        let isPanelCollapsed = false;
+        let isPanelCollapsed = true;
+        document.getElementById("toggle-panel").textContent = "≫";
 
         toggleBtn.addEventListener("click", function () {
+          const contenido = document.getElementById("points-panel-content");
+          const hayCajas = contenido && contenido.children.length > 0;
+
+          if (!hayCajas && isPanelCollapsed) {
+            debug("⛔ Panel bloqueado porque no hay usuarios visibles.");
+            return; // No se abre si está vacío
+          }
+
           isPanelCollapsed = !isPanelCollapsed;
 
           if (isPanelCollapsed) {
@@ -1913,62 +2383,174 @@
       //----------------------------
 
       // Configurar los botones del panel de control lateral
-      document.getElementById("btn-move-5m").addEventListener("click", () => {
-        if (!cloudLoaded) {
-          debug("Nube no cargada. No se puede trazar trayectoria.");
-          return;
-        }
+      document.addEventListener("DOMContentLoaded", function () {
+        setTimeout(() => {
+          try {
+            document
+              .getElementById("btn-full-extent")
+              .addEventListener("click", function () {
+                if (camaraEnganchadaA !== null) {
+                  debug(
+                    `🔓 Cámara desenganchada de ${camaraEnganchadaA} (botón Full Extent)`
+                  );
+                  camaraEnganchadaA = null;
 
-        /* ───────────── 1. Si ya hay líneas creadas ⇒ simple toggle de visibilidad */
-        if (window.trayectoriasLineas.size > 0) {
-          for (const linea of window.trayectoriasLineas.values()) {
-            linea.visible = !linea.visible;
+                  const cajas = document.querySelectorAll(
+                    ".point-item.selected"
+                  );
+                  cajas.forEach((caja) => caja.classList.remove("selected"));
+                  document
+                    .querySelectorAll(".follow-status")
+                    .forEach((elem) => (elem.style.display = "none"));
+                }
+
+                const pos = {
+                  x: 520733.27100245113,
+                  y: 1217765.8034400654,
+                  z: 1380.2490794543892,
+                };
+                const foco = {
+                  x: 522986.192278496,
+                  y: 1217646.0842854953,
+                  z: 30.206114982700683,
+                };
+
+                cameraMoving = false;
+                moveCamera(pos.x, pos.y, pos.z, foco.x, foco.y, foco.z, false);
+                debug("🌍 Cámara enviada a vista Full Extent personalizada");
+              });
+
+            document
+              .getElementById("btn-move-5m")
+              .addEventListener("click", function () {
+                if (!cloudLoaded) {
+                  debug("Nube no cargada. No se puede trazar trayectoria.");
+                  return;
+                }
+
+                // Si ya hay líneas creadas, alternar visibilidad
+                if (window.trayectoriasLineas.size > 0) {
+                  for (const [id, linea] of window.trayectoriasLineas) {
+                    linea.visible = !linea.visible;
+                  }
+                  debug(
+                    "Trayectorias visibles: " +
+                      [...window.trayectoriasLineas.values()].filter(
+                        (l) => l.visible
+                      ).length
+                  );
+                  viewer.scene.dispatchEvent({ type: "update" });
+                  return;
+                }
+
+                // Crear líneas por cada usuario con trayectoria suficiente
+                for (const [id, trayectoria] of window.trayectoriasPorUsuario) {
+                  if (trayectoria.length < 2) continue;
+
+                  const puntos = trayectoria
+                    .map((p) => {
+                      const coords = convertGPSToCloudCoords(
+                        p.latitude,
+                        p.longitude,
+                        p.altitude
+                      );
+                      return coords
+                        ? new THREE.Vector3(coords.x, coords.y, coords.z)
+                        : null;
+                    })
+                    .filter((p) => p !== null);
+
+                  if (puntos.length < 2) continue;
+
+                  const geometry = new THREE.BufferGeometry().setFromPoints(
+                    puntos
+                  );
+                  const color = new THREE.Color(
+                    userLocations.get(id)?.color || 0xffffff
+                  );
+                  const material = new THREE.LineBasicMaterial({
+                    color: color,
+                  });
+
+                  const linea = new THREE.Line(geometry, material);
+                  linea.name = `Trayectoria_${id}`;
+                  linea.visible = true; // 👈 Activar aquí
+                  viewer.scene.scene.add(linea);
+
+                  window.trayectoriasLineas.set(id, linea);
+                }
+
+                //
+
+                if (window.trayectoriasLineas.size > 0) {
+                  debug(
+                    "Trayectorias dibujadas para: " +
+                      [...window.trayectoriasLineas.keys()].join(", ")
+                  );
+                  viewer.scene.dispatchEvent({ type: "update" });
+                } else {
+                  alert("No se encontraron trayectorias válidas.");
+                }
+              });
+
+            document
+              .getElementById("btn-home")
+              .addEventListener("click", function () {
+                if (camaraEnganchadaA !== null) {
+                  debug(
+                    `🔓 Cámara desenganchada de ${camaraEnganchadaA} (botón casa)`
+                  );
+                  camaraEnganchadaA = null;
+
+                  const cajas = document.querySelectorAll(
+                    ".point-item.selected"
+                  );
+                  cajas.forEach((caja) => caja.classList.remove("selected"));
+                  document
+                    .querySelectorAll(".follow-status")
+                    .forEach((elem) => (elem.style.display = "none"));
+                }
+
+                const pos = {
+                  x: 524771.285943634,
+                  y: 1215882.4076521,
+                  z: 69.51156807146481,
+                };
+                const foco = { x: 524823.59, y: 1215810.79, z: 31.98 };
+
+                cameraMoving = false;
+                moveCamera(pos.x, pos.y, pos.z, foco.x, foco.y, foco.z, false); // usarOffset = false
+                debug(
+                  "🏠 Cámara enviada al punto de origen con transición suave calibrada"
+                );
+              });
+
+            //
+            // Asegúrate de que los iconos estén visibles y sean clicables
+            const buttons = document.querySelectorAll("#left-toolbar button");
+            buttons.forEach((button) => {
+              // Forzar visibilidad y estilos correctos
+              const icon = button.querySelector("i");
+              if (icon) {
+                icon.style.display = "block";
+                icon.style.visibility = "visible";
+                icon.style.opacity = "1";
+              }
+
+              // Añadir clases adicionales para asegurar funcionamiento
+              button.style.cursor = "pointer";
+              button.style.display = "flex";
+              button.style.justifyContent = "center";
+              button.style.alignItems = "center";
+
+              debug(`Botón configurado: ${button.id}`);
+            });
+
+            debug("Panel de control lateral configurado correctamente");
+          } catch (e) {
+            debug(`Error al configurar panel de control lateral: ${e.message}`);
           }
-          debug(
-            "Trayectorias visibles: " +
-              [...window.trayectoriasLineas.values()].filter((l) => l.visible)
-                .length
-          );
-          viewer.scene.dispatchEvent({ type: "update" });
-          return;
-        }
-
-        /* ───────────── 2. Crear las líneas a partir de los puntos almacenados  */
-        let seCreoAlguna = false;
-
-        for (const [id, trayectoria] of window.trayectoriasPorUsuario) {
-          if (trayectoria.length < 2) continue; // necesita ≥2 puntos
-
-          /* Cada elemento YA tiene x, y, z: no vuelvas a convertir */
-          const puntos = trayectoria.map(
-            (p) => new THREE.Vector3(p.x, p.y, p.z + 2)
-          );
-
-          /* Línea simple (BufferGeometry + Line)   ─ menos pesada y sin caras */
-          const geometry = new THREE.BufferGeometry().setFromPoints(puntos);
-          const color = new THREE.Color(
-            userLocations.get(id)?.color || 0xffffff
-          );
-          const material = new THREE.LineBasicMaterial({ color });
-
-          const linea = new THREE.Line(geometry, material);
-          linea.name = `Trayectoria_${id}`;
-          linea.visible = true;
-          viewer.scene.scene.add(linea);
-
-          window.trayectoriasLineas.set(id, linea);
-          seCreoAlguna = true;
-        }
-
-        if (seCreoAlguna) {
-          debug(
-            "Trayectorias dibujadas para: " +
-              [...window.trayectoriasLineas.keys()].join(", ")
-          );
-          viewer.scene.dispatchEvent({ type: "update" });
-        } else {
-          alert("No se encontraron trayectorias válidas.");
-        }
+        }, 3000); // Aumentar a 3 segundos para asegurar que todo esté cargado
       });
 
       // Añadir al final de la configuración de los botones del panel de control lateral (línea ~755)
@@ -2011,5 +2593,13 @@
         setTimeout(ensureIconsLoaded, 1500);
       });
     </script>
+
+    <div id="loading-screen">
+      <div class="loading-box">
+        <h1 class="logo-title">GPSRENDER</h1>
+        <div class="spinner"></div>
+        <p>Cargando escena 3D...</p>
+      </div>
+    </div>
   </body>
 </html>
