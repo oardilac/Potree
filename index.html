@@ -1296,8 +1296,15 @@
               }
             }
           } else if (userMarkers[id] && !fueraDeRango) {
+            // Mover el marcador del usuario
             userMarkers[id].position.set(cloud.x, cloud.y, cloud.z);
             userMarkers[id].visible = true;
+
+            // Mover también la flecha si existe
+            if (flechasHeading[id]) {
+              flechasHeading[id].position.set(cloud.x, cloud.y, cloud.z);
+              flechasHeading[id].rotation.z = -user.heading * (Math.PI / 180);
+            }
           }
 
           if (
@@ -1356,7 +1363,7 @@
               }
 
               linea = new THREE.Mesh(geometry, material);
-              linea.visible = visibleAntes;
+              linea.visible = false;
               viewer.scene.scene.add(linea);
               trayectoriasLineas.set(id, linea);
             }
